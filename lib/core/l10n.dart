@@ -8,12 +8,17 @@ class L10n {
   static AppLocale get loc => AppLocale(language);
 }
 String t(String key) => L10n.loc.call(key);
+Set<String> get tAllKeys => _tables[AppLanguage.ru]!.keys.toSet();
+String tf(String key, Map<String, Object> args) => L10n.loc.format(key, args);
 class AppLocale {
   const AppLocale(this.language);
   final AppLanguage language;
   String call(String key) {
     final table = _tables[language]!;
-    return table[key] ?? _tables[AppLanguage.en]![key] ?? key;
+    return table[key] ??
+        _tables[AppLanguage.en]![key] ??
+        _tables[AppLanguage.ru]![key] ??
+        key;
   }
   String format(String key, Map<String, Object> args) {
     var value = call(key);
@@ -120,6 +125,15 @@ const Map<String, String> _ru = {
   'settings.version': 'Версия 1.0.0',
   'settings.author': 'Автор',
   'settings.language': 'Язык',
+  'settings.minutes1': '1 мин',
+  'settings.minutes5': '5 мин',
+  'settings.minutes15': '15 мин',
+  'settings.added': 'Папка «{label}» добавлена',
+  'settings.manual': 'Инструкция',
+  'settings.manualHint': 'Как пользоваться приложением',
+  'settings.builtWith': 'Сделано на Flutter',
+  'lang.ru': 'Русский',
+  'lang.en': 'English',
   'word.save': 'Сохранить',
   'word.find': 'Поиск',
   'word.exportPdf': 'Экспорт в PDF',
@@ -351,6 +365,15 @@ const Map<String, String> _en = {
   'settings.version': 'Version 1.0.0',
   'settings.author': 'Author',
   'settings.language': 'Language',
+  'settings.minutes1': '1 min',
+  'settings.minutes5': '5 min',
+  'settings.minutes15': '15 min',
+  'settings.added': 'Added «{label}»',
+  'settings.manual': 'Instructions',
+  'settings.manualHint': 'How to use the app',
+  'settings.builtWith': 'Built with Flutter',
+  'lang.ru': 'Русский',
+  'lang.en': 'English',
   'help.title': 'Instructions',
 };
 const Map<AppLanguage, Map<String, String>> _tables = {

@@ -15,6 +15,16 @@ import 'package:openfiles/features/slides/pptx_codec.dart' as ppt;
 import 'package:openfiles/features/word/docx_codec.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+Set<String> resolvedKeysOf(AppLanguage language) {
+  L10n.language = language;
+  final collected = <String>{};
+  for (final key in tAllKeys) {
+    if (t(key) != key) collected.add(key);
+  }
+  L10n.language = AppLanguage.ru;
+  return collected;
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -301,6 +311,27 @@ void main() {
         );
         expect(t('help.${key}Text').length, greaterThan(20));
       }
+    });
+
+    test('every key resolves to a translation in both languages', () {
+      for (final language in AppLanguage.values) {
+        L10n.language = language;
+        for (final key in tAllKeys) {
+          expect(t(key), isNot(equals(key)), reason: 'raw key $key in $language');
+        }
+      }
+      L10n.language = AppLanguage.ru;
+    });
+
+    test('english never declares a key that russian lacks', () {
+      final russian = resolvedKeysOf(AppLanguage.ru);
+      final english = resolvedKeysOf(AppLanguage.en);
+      expect(english.difference(russian), isEmpty);
+    });
+
+    test('placeholders in formatted strings are resolved', () {
+      expect(tf('settings.added', {'label': 'Download'}), contains('Download'));
+      expect(tf('settings.added', {'label': 'Download'}), isNot(contains('{')));
     });
   });
 
