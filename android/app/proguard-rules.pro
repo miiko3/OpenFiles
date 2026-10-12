@@ -1,0 +1,6 @@
+-keep class io.flutter.** { *; }
+-keep class io.flutter.plugins.** { *; }
+-keep class com.openfiles.openfiles.** { *; }
+-dontwarn io.flutter.embedding.**
+-keepattributes *Annotation*
+-keepattributes Signature

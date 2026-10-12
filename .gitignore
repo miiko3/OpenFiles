@@ -1,0 +1,23 @@
+# Build outputs
+build/
+.dart_tool/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+pubspec.lock
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Android signing
+android/key.properties
+android/app/*.jks
+android/app/upload-keystore.jks
+
+# Local scratch
+sample_out/
+probe.dart
+*.log
+hs_err_pid*.log
