@@ -1,6 +1,6 @@
 {
   "name": "openfiles",
-  "version": "1.0.3",
+  "version": "1.0.6",
   "platform": "android",
   "features": ["viewer", "editor", "saf", "offline"]
 }

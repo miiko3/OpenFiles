@@ -39,6 +39,51 @@ class _PdfViewerState extends State<PdfViewer> {
   PdfTool _tool = PdfTool.navigate;
   Color _color = const Color(0xFFD08A4E);
   double _stroke = 3;
+  pdfrx.PdfViewerParams? _params;
+  bool _ready = false;
+  int _mountKey = 0;
+
+  pdfrx.PdfViewerParams _paramsFor(AppColors c) {
+    return _params ??= pdfrx.PdfViewerParams(
+      backgroundColor: c.canvas,
+      margin: 12,
+      pageDropShadow: BoxShadow(
+        color: c.shadow,
+        blurRadius: 12,
+        offset: const Offset(0, 4),
+      ),
+      onViewerReady: (document, controller) {
+        _controller = controller;
+        _pageCount = document.pages.length;
+      },
+      onPageChanged: (pageNumber) {
+        if (pageNumber != null && pageNumber != _activePage) {
+          setState(() => _activePage = pageNumber);
+        }
+      },
+      pageOverlaysBuilder: (context, pageRect, page) {
+        _pageRects[page.pageNumber] = pageRect;
+        final layers = <Widget>[];
+        for (final mark in _marks.where((m) => m.page == page.pageNumber)) {
+          layers.add(_paintMark(mark, pageRect));
+        }
+        if (_current.isNotEmpty && _hitPage(pageRect.topLeft) == page.pageNumber) {
+          layers.add(
+            _paintMark(
+              PdfMark(
+                page: page.pageNumber,
+                tool: _tool,
+                points: List.of(_current),
+                color: _color,
+              ),
+              pageRect,
+            ),
+          );
+        }
+        return layers;
+      },
+    );
+  }
   @override
   void initState() {
     super.initState();
@@ -58,6 +103,14 @@ class _PdfViewerState extends State<PdfViewer> {
       setState(() {
         _bytes = bytes;
         _loading = false;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() => _ready = true);
+      });
+      Future<void>.delayed(const Duration(milliseconds: 700), () {
+        if (!mounted) return;
+        setState(() => _mountKey++);
       });
     } catch (e) {
       if (!mounted) return;
@@ -95,6 +148,9 @@ class _PdfViewerState extends State<PdfViewer> {
         message: _error,
         action: PillButton(label: 'Повторить', primary: true, onPressed: _load),
       );
+    }
+    if (!_ready) {
+      return const LoadingOverlay(visible: true, message: 'Opening PDF');
     }
     return Column(
       children: [
@@ -177,46 +233,9 @@ class _PdfViewerState extends State<PdfViewer> {
                 : null,
             child: pdfrx.PdfViewer.data(
               _bytes!,
+              key: ValueKey<int>(_mountKey),
               sourceName: widget.node.name,
-              params: pdfrx.PdfViewerParams(
-                backgroundColor: c.canvas,
-                margin: 12,
-                pageDropShadow: BoxShadow(
-                  color: c.shadow,
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-                onViewerReady: (document, controller) {
-                  _controller = controller;
-                  _pageCount = document.pages.length;
-                },
-                onPageChanged: (pageNumber) {
-                  if (pageNumber != null && pageNumber != _activePage) {
-                    setState(() => _activePage = pageNumber);
-                  }
-                },
-                pageOverlaysBuilder: (context, pageRect, page) {
-                  _pageRects[page.pageNumber] = pageRect;
-                  final layers = <Widget>[];
-                  for (final mark in _marks.where((m) => m.page == page.pageNumber)) {
-                    layers.add(_paintMark(mark, pageRect));
-                  }
-                  if (_current.isNotEmpty && _hitPage(pageRect.topLeft) == page.pageNumber) {
-                    layers.add(
-                      _paintMark(
-                        PdfMark(
-                          page: page.pageNumber,
-                          tool: _tool,
-                          points: List.of(_current),
-                          color: _color,
-                        ),
-                        pageRect,
-                      ),
-                    );
-                  }
-                  return layers;
-                },
-              ),
+              params: _paramsFor(c),
             ),
           ),
         ),

@@ -62,6 +62,7 @@ docs/demo/
 │   ├── Отчёт за квартал.docx   заголовок, абзацы, список, таблица
 │   ├── Бюджет.xlsx             формулы SUM, жирные строки, числа
 │   ├── Презентация.pptx        текст, фигуры, таблица, переходы
+│   ├── Счёт.pdf                счёт с таблицей, встроенными шрифтами и кириллицей
 │   └── Инструкция.txt
 ├── Текст и код/
 │   ├── Заметки.md              Markdown с заголовками и списками
@@ -173,8 +174,10 @@ adb install -r build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
 Пересобрать демонстрационные файлы из `docs/demo/`:
 
 ```bash
-flutter test test/make_demo_test.dart
+OPENFILES_DEMO_OUT=docs/demo flutter test test/make_demo_test.dart
 ```
+
+Без переменной окружения файлы собираются в `build/demo` и не затрагивают репозиторий.
 
 ---
 
@@ -219,7 +222,7 @@ The folder is remembered, so you only do this once. You can also open a file fro
 
 ### Try it without your own files
 
-The `docs/demo/` folder in this repository holds sample files built with the same codecs the app uses, so every one of them is known to open correctly: a DOCX report, an XLSX budget with formulas, a PPTX deck, Markdown, CSV, JSON, Dart, a PNG and a ZIP. Copy the folder to your phone, grant access, and open everything.
+The `docs/demo/` folder in this repository holds sample files built with the same codecs the app uses, so every one of them is known to open correctly: a DOCX report, an XLSX budget with formulas, a PPTX deck, a PDF invoice with embedded fonts, Markdown, CSV, JSON, Dart, a PNG and a ZIP. Copy the folder to your phone, grant access, and open everything.
 
 ### Privacy
 

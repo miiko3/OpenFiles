@@ -3,6 +3,7 @@ import 'package:flutter/material.dart' hide SlideTransition;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import '../../core/pdf_fonts.dart';
 import '../../core/theme/tokens.dart';
 import '../../data/models/fs_node.dart';
 import '../../data/services/saf_service.dart';
@@ -294,7 +295,8 @@ class _SlidesEditorState extends State<SlidesEditor> {
   }
   Future<void> _exportPdf() async {
     try {
-      final doc = pw.Document();
+      final fonts = await PdfFonts.load();
+      final doc = pw.Document(theme: fonts.theme());
       for (final slide in _deck.slides) {
         doc.addPage(
           pw.Page(

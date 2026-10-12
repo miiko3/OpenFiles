@@ -4,6 +4,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:provider/provider.dart';
+import '../../core/pdf_fonts.dart';
 import '../../core/theme/tokens.dart';
 import '../../data/models/fs_node.dart';
 import '../../data/providers/app_settings.dart';
@@ -359,7 +360,8 @@ class _WordEditorState extends State<WordEditor> {
     }
   }
   Future<Uint8List> _buildPdf() async {
-    final doc = pw.Document();
+    final fonts = await PdfFonts.load();
+    final doc = pw.Document(theme: fonts.theme());
     final setup = _doc.pageSetup;
     doc.addPage(
       pw.Page(
@@ -779,6 +781,15 @@ class _WordEditorState extends State<WordEditor> {
         return _textBlock(index, paragraph, c, scale);
     }
   }
+  RunStyle _uniformRunStyle(DocParagraph paragraph) {
+    if (paragraph.runs.isEmpty) return const RunStyle();
+    final first = paragraph.runs.first.style;
+    for (final run in paragraph.runs) {
+      if (!run.style.sameAs(first)) return first;
+    }
+    return first;
+  }
+
   Widget _textBlock(int index, DocParagraph paragraph, AppColors c, double scale) {
     final style = paragraph.style;
     final headingSize = style.headingLevel == null
@@ -786,6 +797,7 @@ class _WordEditorState extends State<WordEditor> {
         : (26.0 - (style.headingLevel! * 3)).clamp(14.0, 26.0);
     final controller = _controllerFor(index);
     final focus = _focusFor(index);
+    final run = _uniformRunStyle(paragraph);
     final textField = TextField(
       controller: controller,
       focusNode: focus,
@@ -793,18 +805,32 @@ class _WordEditorState extends State<WordEditor> {
       minLines: 1,
       keyboardType: TextInputType.multiline,
       textAlignVertical: TextAlignVertical.top,
+      textAlign: switch (style.align ?? DocAlign.left) {
+        DocAlign.center => TextAlign.center,
+        DocAlign.right => TextAlign.right,
+        DocAlign.justify => TextAlign.justify,
+        _ => TextAlign.left,
+      },
       cursorColor: c.primary,
       onTap: () => _setFocused(index),
       onChanged: (value) => _syncParagraph(index, value),
       onSubmitted: null,
       style: TextStyle(
-        fontSize: (headingSize ?? 15) * scale,
+        fontSize: (run.fontSize ?? headingSize ?? 15) * scale,
         height: style.lineHeight ?? 1.5,
-        fontWeight: headingSize != null ? FontWeight.w700 : FontWeight.w400,
-        fontFamily: paragraph.runs.isEmpty
+        fontWeight: run.bold || headingSize != null
+            ? FontWeight.w700
+            : FontWeight.w400,
+        fontStyle: run.italic ? FontStyle.italic : FontStyle.normal,
+        decoration: TextDecoration.combine([
+          if (run.underline) TextDecoration.underline,
+          if (run.strikethrough) TextDecoration.lineThrough,
+        ]),
+        fontFamily: run.fontFamily,
+        color: run.color == null ? c.text : Color(run.color!),
+        backgroundColor: run.highlight == null
             ? null
-            : paragraph.runs.first.style.fontFamily,
-        color: c.text,
+            : Color(run.highlight!).withValues(alpha: 0.35),
       ),
       decoration: InputDecoration(
         isDense: true,

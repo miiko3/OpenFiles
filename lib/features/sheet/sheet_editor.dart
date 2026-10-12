@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import '../../core/pdf_fonts.dart';
 import '../../core/theme/tokens.dart';
 import '../../data/models/fs_node.dart';
 import '../../data/services/saf_service.dart';
@@ -387,7 +388,8 @@ class _SheetEditorState extends State<SheetEditor> {
     );
   }
   Future<Uint8List> _csvAsPdf(Uint8List csvBytes) async {
-    final doc = pw.Document();
+    final fonts = await PdfFonts.load();
+    final doc = pw.Document(theme: fonts.theme());
     doc.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
@@ -400,7 +402,8 @@ class _SheetEditorState extends State<SheetEditor> {
   }
   Future<void> _exportPdf() async {
     try {
-      final doc = pw.Document();
+      final fonts = await PdfFonts.load();
+      final doc = pw.Document(theme: fonts.theme());
       final rows = _sheet.maxRow;
       final cols = _sheet.maxCol;
       doc.addPage(

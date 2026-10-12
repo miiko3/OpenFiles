@@ -5,11 +5,14 @@ import 'dart:typed_data';
 import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
+import 'package:openfiles/core/pdf_fonts.dart';
 import 'package:openfiles/features/sheet/sheet_codec.dart';
 import 'package:openfiles/features/slides/pptx_codec.dart' as ppt;
 import 'package:openfiles/features/word/docx_codec.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 
-const outRoot = r'C:\Users\123\AppData\Local\Temp\opencode\demo';
+final outRoot = Platform.environment['OPENFILES_DEMO_OUT'] ?? 'build/demo';
 
 void writeFile(String path, List<int> bytes) {
   File(path)
@@ -18,6 +21,8 @@ void writeFile(String path, List<int> bytes) {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   test('generate demo content', () async {
     final root = Directory(outRoot);
     if (root.existsSync()) root.deleteSync(recursive: true);
@@ -51,8 +56,9 @@ void main() {
     writeFile('$outRoot/Изображения/Обложка.png', _gradientPng());
     writeFile(
       '$outRoot/Документы/Инструкция.txt',
-      utf8.encode('OpenFiles 1.0.3\n\nДемонстрационный набор файлов.\n'),
+      utf8.encode('OpenFiles 1.0.6\n\nДемонстрационный набор файлов.\n'),
     );
+    writeFile('$outRoot/Документы/Счёт.pdf', await _pdf(await PdfFonts.load()));
 
     var total = 0;
     for (final entity in root.listSync(recursive: true)) {
@@ -309,7 +315,7 @@ String _csv() =>
 String _json() => '''
 {
   "name": "openfiles",
-  "version": "1.0.3",
+  "version": "1.0.6",
   "platform": "android",
   "features": ["viewer", "editor", "saf", "offline"]
 }
@@ -336,16 +342,48 @@ class DemoCard extends StatelessWidget {
 ''';
 
 String _readme() => '''
-OpenFiles 1.0.3
+OpenFiles 1.0.6
 
 Демонстрационный набор файлов:
-  Документы   - DOCX, XLSX, PPTX, TXT
+  Документы   - DOCX, XLSX, PPTX, PDF, TXT
   Текст и код - Markdown, CSV, JSON, Dart
   Изображения - PNG
   Архивы      - ZIP
 
 Все файлы созданы средствами самого приложения.
 ''';
+
+Future<Uint8List> _pdf(PdfFonts fonts) async {
+  final doc = pw.Document(theme: fonts.theme());
+  doc.addPage(
+    pw.MultiPage(
+      build: (context) => [
+        pw.Header(level: 0, child: pw.Text('Счёт на оплату')),
+        pw.Paragraph(
+          text: 'Демонстрационный PDF для проверки просмотрщика и аннотаций.',
+        ),
+        pw.SizedBox(height: 12),
+        pw.TableHelper.fromTextArray(
+          headers: const ['Позиция', 'Кол-во', 'Сумма'],
+          data: const [
+            ['Разработка интерфейса', '1', '45 000'],
+            ['Дизайн иконки', '1', '8 000'],
+            ['Поддержка', '3', '12 000'],
+          ],
+          headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+          border: pw.TableBorder.all(color: PdfColors.grey400),
+          cellAlignments: {
+            1: pw.Alignment.centerRight,
+            2: pw.Alignment.centerRight,
+          },
+        ),
+        pw.SizedBox(height: 12),
+        pw.Text('Итого: 65 000 ₽'),
+      ],
+    ),
+  );
+  return Uint8List.fromList(await doc.save());
+}
 
 Uint8List _gradientPng() {
   const size = 720;

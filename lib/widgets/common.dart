@@ -241,7 +241,7 @@ class LoadingOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!visible) return const SizedBox.shrink();
     final c = context.c;
-    return Positioned.fill(
+    return SizedBox.expand(
       child: ColoredBox(
         color: c.bg.withValues(alpha: 0.72),
         child: Center(

@@ -6,6 +6,7 @@ import 'package:archive/archive.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:openfiles/core/l10n.dart';
+import 'package:openfiles/core/pdf_fonts.dart';
 import 'package:openfiles/core/theme/app_theme.dart';
 import 'package:openfiles/data/models/fs_node.dart';
 import 'package:openfiles/data/providers/app_settings.dart';
@@ -14,6 +15,7 @@ import 'package:openfiles/features/browser/viewers/csv_editor.dart';
 import 'package:openfiles/features/sheet/sheet_codec.dart';
 import 'package:openfiles/features/slides/pptx_codec.dart' as ppt;
 import 'package:openfiles/features/word/docx_codec.dart';
+import 'package:pdf/widgets.dart' as pw;
 import 'package:shared_preferences/shared_preferences.dart';
 
 Archive _docxWithSectPr(String sectPr) {
@@ -404,6 +406,30 @@ void main() {
     test('placeholders in formatted strings are resolved', () {
       expect(tf('settings.added', {'label': 'Download'}), contains('Download'));
       expect(tf('settings.added', {'label': 'Download'}), isNot(contains('{')));
+    });
+  });
+
+  group('pdf export', () {
+    test('embeds a real font so cyrillic survives', () async {
+      final fonts = await PdfFonts.load();
+      final doc = pw.Document(theme: fonts.theme());
+      doc.addPage(
+        pw.Page(
+          build: (context) => pw.Text('Отчёт за квартал'),
+        ),
+      );
+      final bytes = await doc.save();
+
+      expect(bytes.length, greaterThan(2000));
+      final raw = latin1.decode(bytes, allowInvalid: true);
+      expect(raw, contains('FontFile'));
+      expect(raw, contains('ToUnicode'));
+    });
+
+    test('fonts are cached after the first load', () async {
+      final first = await PdfFonts.load();
+      final second = await PdfFonts.load();
+      expect(identical(first, second), isTrue);
     });
   });
 

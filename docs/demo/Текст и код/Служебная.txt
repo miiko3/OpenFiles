@@ -1,7 +1,7 @@
-OpenFiles 1.0.3
+OpenFiles 1.0.6
 
 Демонстрационный набор файлов:
-  Документы   - DOCX, XLSX, PPTX, TXT
+  Документы   - DOCX, XLSX, PPTX, PDF, TXT
   Текст и код - Markdown, CSV, JSON, Dart
   Изображения - PNG
   Архивы      - ZIP
