@@ -1,5 +1,9 @@
 # OpenFiles
 
+<p align="center">
+  <a href="#english">English</a> · <a href="#установка">Установка</a> · <a href="#что-умеет">Возможности</a> · <a href="#автор">Автор</a>
+</p>
+
 Файловый менеджер и редактор для Android, который открывает и правит файлы **прямо в памяти устройства**. Никаких копий в приватном хранилище: всё читается и записывается в выданную вами папку.
 
 Приложение полностью работает офлайн. Без рекламы, без телеметрии, без аккаунтов.
@@ -171,6 +175,55 @@ adb install -r build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
 ```bash
 flutter test test/make_demo_test.dart
 ```
+
+---
+
+## English
+
+**OpenFiles** is a file manager and editor for Android that opens and saves files **directly in device storage**. Nothing is copied into private app storage — every read and write goes to the folder you granted.
+
+Works fully offline. No ads, no tracking, no accounts. The interface is available in Russian and English.
+
+### Install
+
+Download the APK from the [latest release](https://github.com/miiko3/OpenFiles/releases/latest) and allow installation from unknown sources.
+
+| File | Use it on |
+|---|---|
+| `OpenFiles-<version>-arm64-v8a.apk` | modern phones, **most devices** |
+| `OpenFiles-<version>-armeabi-v7a.apk` | older 32-bit devices |
+| `OpenFiles-<version>-x86_64.apk` | emulators and Intel/AMD tablets |
+
+Requires Android 7.0 (API 24) or newer.
+
+### What it does
+
+- **Opens any file** — Word, Excel, PDF, images, audio, video, archives, fonts and e-books. Unknown formats open in a hex viewer with byte search instead of throwing an error.
+- **Edits documents** — `.docx`, `.xlsx` and `.pptx` are read and written by built-in OOXML codecs. The original file is overwritten, no copy is created.
+- **Annotates PDFs** — highlight, underline, strikethrough, notes and freehand drawing.
+- **Plays media** — video and audio with a player, images with zoom, archives with a content preview.
+
+### Granting access
+
+Android does not let apps read files without explicit permission, so OpenFiles asks for a folder on first launch.
+
+**Important on Android 11 and newer.** The system picker refuses access to the storage root and to the `Download` folder as a whole. Create a subfolder inside it:
+
+1. Open the system folder picker.
+2. Enter `Download`.
+3. Tap the create-folder button and make a folder, for example `OpenFiles`.
+4. Enter it and confirm "Use this folder".
+5. Allow access in the system dialog.
+
+The folder is remembered, so you only do this once. You can also open a file from another app by setting OpenFiles as the default handler or using "Send to" in the context menu.
+
+### Try it without your own files
+
+The `docs/demo/` folder in this repository holds sample files built with the same codecs the app uses, so every one of them is known to open correctly: a DOCX report, an XLSX budget with formulas, a PPTX deck, Markdown, CSV, JSON, Dart, a PNG and a ZIP. Copy the folder to your phone, grant access, and open everything.
+
+### Privacy
+
+OpenFiles has no account system, no ads and no analytics. It never requests full storage access — it only reads and writes inside the folder you selected.
 
 ---
 
