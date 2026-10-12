@@ -214,40 +214,37 @@ class SlidePainter extends CustomPainter {
   ) {
     if (text.isEmpty) return;
     final fontSize = (style.fontSize * scale).clamp(4.0, 160.0);
-    final builder = ui.ParagraphBuilder(
-      ui.ParagraphStyle(
-        textAlign: switch (style.align) {
-          SlideTextAlign.center => TextAlign.center,
-          SlideTextAlign.right => TextAlign.right,
-          SlideTextAlign.justify => TextAlign.justify,
-          _ => TextAlign.left,
-        },
-        textDirection: TextDirection.ltr,
-        fontSize: fontSize,
-        fontWeight: style.bold ? FontWeight.w700 : FontWeight.w400,
-        fontStyle: style.italic ? FontStyle.italic : FontStyle.normal,
-        fontFamily: style.fontFamily,
-        maxLines: (rect.height / (fontSize * 1.25)).floor().clamp(1, 400),
-        ellipsis: '...',
-      ),
-    )
-      ..pushStyle(
-        ui.TextStyle(
+    final maxLines = (rect.height / (fontSize * 1.25)).floor().clamp(1, 400);
+    final painter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
           color: Color(style.color),
           fontSize: fontSize,
+          fontFamily: style.fontFamily,
           fontWeight: style.bold ? FontWeight.w700 : FontWeight.w400,
+          fontStyle: style.italic ? FontStyle.italic : FontStyle.normal,
           decoration: style.underline ? TextDecoration.underline : null,
+          decorationColor: Color(style.color),
         ),
-      )
-      ..addText(text);
-    final paragraph = builder.build();
+      ),
+      textAlign: switch (style.align) {
+        SlideTextAlign.center => TextAlign.center,
+        SlideTextAlign.right => TextAlign.right,
+        SlideTextAlign.justify => TextAlign.justify,
+        _ => TextAlign.left,
+      },
+      textDirection: TextDirection.ltr,
+      maxLines: maxLines,
+      ellipsis: '...',
+    )..layout(maxWidth: rect.width);
     var dy = switch (style.valign) {
-      SlideVAlign.middle => (rect.height - paragraph.height) / 2,
-      SlideVAlign.bottom => rect.height - paragraph.height,
+      SlideVAlign.middle => (rect.height - painter.height) / 2,
+      SlideVAlign.bottom => rect.height - painter.height,
       _ => 0.0,
     };
     if (dy < 0) dy = 0;
-    canvas.drawParagraph(paragraph, Offset(rect.left, rect.top + dy));
+    painter.paint(canvas, Offset(rect.left, rect.top + dy));
   }
   @override
   bool shouldRepaint(SlidePainter oldDelegate) => true;

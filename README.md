@@ -4,6 +4,31 @@
 
 Приложение полностью работает офлайн. Без рекламы, без телеметрии, без аккаунтов.
 
+<p align="center">
+  <img src="docs/screenshots/browser-documents.png" width="200" alt="Проводник">
+  <img src="docs/screenshots/editor-word.png" width="200" alt="Редактор документов">
+  <img src="docs/screenshots/editor-sheet.png" width="200" alt="Редактор таблиц">
+</p>
+<p align="center">
+  <img src="docs/screenshots/editor-slides.png" width="200" alt="Редактор презентаций">
+  <img src="docs/screenshots/viewer-markdown.png" width="200" alt="Просмотр Markdown">
+  <img src="docs/screenshots/browser-text-code.png" width="200" alt="Тёмная тема">
+</p>
+
+---
+
+## Установка
+
+Скачайте APK из [последнего релиза](https://github.com/miiko3/OpenFiles/releases/latest) и разрешите установку из неизвестных источников.
+
+| Файл | Для чего |
+|---|---|
+| `OpenFiles-<версия>-arm64-v8a.apk` | современные телефоны, **большинство устройств** |
+| `OpenFiles-<версия>-armeabi-v7a.apk` | старые 32-разрядные устройства |
+| `OpenFiles-<версия>-x86_64.apk` | эмуляторы и планшеты на Intel/AMD |
+
+Требуется Android 7.0 (API 24) или новее.
+
 ---
 
 ## Что умеет
@@ -15,6 +40,38 @@
 **Аннотирует PDF** — выделение, подчёркивание, зачёркивание, заметки и рисование поверх страницы.
 
 **Играет медиа** — видео и аудио с плеером, просмотр изображений с зумом, разбор архивов с предпросмотром содержимого.
+
+<p align="center">
+  <img src="docs/screenshots/settings-dark.png" width="200" alt="Настройки">
+  <img src="docs/screenshots/help-instructions.png" width="200" alt="Инструкция">
+</p>
+
+---
+
+## Попробовать без своих файлов
+
+В репозитории лежит набор демонстрационных файлов — папка `docs/demo/` собрана **теми же кодеками**, которыми пользуется приложение, поэтому каждый файл заведомо открывается корректно:
+
+```
+docs/demo/
+├── Документы/
+│   ├── Отчёт за квартал.docx   заголовок, абзацы, список, таблица
+│   ├── Бюджет.xlsx             формулы SUM, жирные строки, числа
+│   ├── Презентация.pptx        текст, фигуры, таблица, переходы
+│   └── Инструкция.txt
+├── Текст и код/
+│   ├── Заметки.md              Markdown с заголовками и списками
+│   ├── Данные.csv
+│   ├── config.json
+│   ├── main.dart
+│   └── Служебная.txt
+├── Изображения/
+│   └── Обложка.png
+└── Архивы/
+    └── Резервная копия.zip
+```
+
+Скопируйте папку на телефон и выдайте приложению к ней доступ — всё содержимое откроется и отредактируется.
 
 ---
 
@@ -94,21 +151,25 @@ Flutter и Dart. Форматы Office разбираются и собираю�
 
 ```bash
 flutter pub get
-flutter build apk --release
+flutter analyze
+flutter test
+flutter build apk --release --split-per-abi
 ```
 
-Готовый APK появится в `build/app/outputs/flutter-apk/`. Установка на устройство:
+Готовые APK появятся в `build/app/outputs/flutter-apk/`. Установка на устройство:
 
 ```bash
-adb install -r build/app/outputs/flutter-apk/app-release.apk
+adb install -r build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
 ```
 
-Тесты и служебные скрипты:
+Сборка подписывается ключом из `android/key.properties`. Если файла нет, используется отладочная подпись — она годится только для личной установки.
+
+Серверные сборки выполняются в GitHub Actions: каждый push в `main` и каждый тег `v*` собирает APK и публикует релиз.
+
+Пересобрать демонстрационные файлы из `docs/demo/`:
 
 ```bash
-dart test
-dart run tool/make_samples.dart
-dart run tool/verify_samples.dart
+flutter test test/make_demo_test.dart
 ```
 
 ---
@@ -121,6 +182,8 @@ dart run tool/verify_samples.dart
 - Telegram — <https://t.me/yetilov>
 - Boosty — <https://boosty.to/miilo3>
 - YooMoney — <https://yoomoney.ru/fundraise/1GJCNQ28KCK.260319>
+
+Приложение бесплатное и без рекламы. Если оно оказалось полезным, поддержать разработку можно по ссылкам выше.
 
 ---
 

@@ -39,6 +39,7 @@ class _TextEditorState extends State<TextEditor> {
   @override
   void initState() {
     super.initState();
+    _preview = widget.previewable;
     _controller.addListener(_onChanged);
     _load();
   }

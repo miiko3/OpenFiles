@@ -34,7 +34,11 @@ class ViewerHost extends StatelessWidget {
       case FileKind.text:
       case FileKind.markdown:
       case FileKind.code:
-        screen = TextEditor(node: node, readOnly: !allowEdit);
+        screen = TextEditor(
+          node: node,
+          readOnly: !allowEdit,
+          previewable: kind == FileKind.markdown,
+        );
       case FileKind.csv:
         screen = CsvEditor(node: node, readOnly: !allowEdit);
       case FileKind.image:

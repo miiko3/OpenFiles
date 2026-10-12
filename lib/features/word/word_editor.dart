@@ -701,54 +701,59 @@ class _WordEditorState extends State<WordEditor> {
   Widget _canvas(AppColors c) {
     final setup = _doc.pageSetup;
     final baseWidth = context.read<AppSettings>().pageWidth;
-    final width = (baseWidth * _zoom).clamp(280.0, 1400.0);
-    final scale = width / setup.pageWidthPt;
-    final height = setup.pageHeightPt * scale;
-    return Container(
-      color: c.canvas,
-      child: Scrollbar(
-        controller: _pageScroll,
-        child: SingleChildScrollView(
-          controller: _pageScroll,
-          padding: const EdgeInsets.fromLTRB(
-            AppSpace.md,
-            AppSpace.md,
-            AppSpace.md,
-            AppSpace.xl,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final available = constraints.maxWidth - AppSpace.md * 2;
+        final fit = baseWidth > available ? available : baseWidth;
+        final width = (fit * _zoom).clamp(240.0, 1400.0);
+        final scale = width / setup.pageWidthPt;
+        final height = setup.pageHeightPt * scale;
+        final page = Container(
+          width: width,
+          constraints: BoxConstraints(minHeight: height),
+          decoration: BoxDecoration(
+            color: c.brightness == Brightness.dark
+                ? const Color(0xFF23201D)
+                : Colors.white,
+            borderRadius: AppRadius.sm,
+            border: Border.all(color: c.border),
+            boxShadow: [
+              BoxShadow(
+                color: c.shadow,
+                blurRadius: 18,
+                offset: const Offset(0, 6),
+              ),
+            ],
           ),
-          child: Center(
-            child: Container(
-              width: width,
-              constraints: BoxConstraints(minHeight: height),
-              decoration: BoxDecoration(
-                color: c.brightness == Brightness.dark
-                    ? const Color(0xFF23201D)
-                    : Colors.white,
-                borderRadius: AppRadius.sm,
-                border: Border.all(color: c.border),
-                boxShadow: [
-                  BoxShadow(
-                    color: c.shadow,
-                    blurRadius: 18,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
+          padding: EdgeInsets.symmetric(
+            horizontal: setup.marginLeftPt * scale,
+            vertical: setup.marginTopPt * scale,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (var i = 0; i < _doc.blocks.length; i++)
+                _block(i, c, scale),
+            ],
+          ),
+        );
+        return Container(
+          color: c.canvas,
+          child: Scrollbar(
+            controller: _pageScroll,
+            child: SingleChildScrollView(
+              controller: _pageScroll,
+              padding: const EdgeInsets.fromLTRB(
+                AppSpace.md,
+                AppSpace.md,
+                AppSpace.md,
+                AppSpace.xl,
               ),
-              padding: EdgeInsets.symmetric(
-                horizontal: setup.marginLeftPt * scale,
-                vertical: setup.marginTopPt * scale,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (var i = 0; i < _doc.blocks.length; i++)
-                    _block(i, c, scale),
-                ],
-              ),
+              child: Center(child: page),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
   Widget _block(int index, AppColors c, double scale) {

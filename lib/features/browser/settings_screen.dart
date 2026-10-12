@@ -25,13 +25,6 @@ class SettingsScreen extends StatelessWidget {
         children: [
           _group(context, context.tr('settings.appearance'), [
             _themeRow(context, settings),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(context.tr('settings.darkPage')),
-              subtitle: Text(context.tr('settings.darkPageHint')),
-              value: false,
-              onChanged: (_) {},
-            ),
             _slider(
               context,
               context.tr('settings.textScale'),
