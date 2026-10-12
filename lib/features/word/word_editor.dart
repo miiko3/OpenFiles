@@ -1,5 +1,5 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -167,6 +167,32 @@ class _WordEditorState extends State<WordEditor> {
       nextController.selection = TextSelection.collapsed(offset: 0);
     });
   }
+  KeyEventResult _handleParagraphKey(int index, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.enter) {
+      final controller = _controllerFor(index);
+      final sel = controller.selection;
+      if (!sel.isValid) return KeyEventResult.ignored;
+      final text = controller.text;
+      final caret = sel.start;
+      if (text.contains('\n')) return KeyEventResult.ignored;
+      _splitParagraph(index, caret);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.backspace) {
+      final controller = _controllerFor(index);
+      final sel = controller.selection;
+      if (!sel.isValid || sel.start != 0 || sel.end != 0) {
+        return KeyEventResult.ignored;
+      }
+      if (index == 0) return KeyEventResult.ignored;
+      _mergeWithPrevious(index);
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
   void _mergeWithPrevious(int index) {
     if (index == 0) return;
     final previous = _doc.blocks[index - 1];
@@ -785,9 +811,11 @@ class _WordEditorState extends State<WordEditor> {
         hintText: '',
       ),
     );
-    return GestureDetector(
-      onDoubleTap: () => _insertParagraphAfter(index),
-      child: Container(
+    return Focus(
+      onKeyEvent: (node, event) => _handleParagraphKey(index, event),
+      child: GestureDetector(
+        onDoubleTap: () => _insertParagraphAfter(index),
+        child: Container(
         width: double.infinity,
         padding: EdgeInsets.only(
           left: (style.indentLeft ?? 0) * scale +
@@ -825,6 +853,7 @@ class _WordEditorState extends State<WordEditor> {
               child: _wrapMarks(paragraph, c, textField),
             ),
           ],
+        ),
         ),
       ),
     );

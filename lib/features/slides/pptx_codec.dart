@@ -209,7 +209,6 @@ class Slide {
         final SlideShapeEl value => value.clone(),
         final SlidePicture value => value.clone(),
         final SlideTableEl value => value.clone(),
-        _ => SlideText(),
       };
 }
 class SlideDeck {
@@ -300,7 +299,7 @@ class PptxCodec {
     final archive = ZipDecoder().decodeBytes(bytes);
     final parts = <String, Uint8List>{};
     for (final file in archive.files) {
-      if (file.isFile && file.content is List<int>) {
+      if (file.isFile) {
         parts[file.name] = Uint8List.fromList(file.content as List<int>);
       }
     }
@@ -603,8 +602,7 @@ class PptxCodec {
         ),
       );
     }
-    final encoded = ZipEncoder().encode(archive);
-    return encoded ?? const <int>[];
+    return ZipEncoder().encode(archive);
   }
   static ArchiveFile _bytes(String name, String content) {
     final data = utf8.encode(content);
@@ -927,14 +925,12 @@ class PptxCodec {
         'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" '
         'Target="../slideLayouts/slideLayout1.xml"/>',
       );
-    var n = 1;
     for (final entry in mediaIndex.entries) {
       b.write(
         '<Relationship Id="${entry.key}" '
         'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" '
         'Target="../media/${entry.value}"/>',
       );
-      n++;
     }
     b.write('</Relationships>');
     return b.toString();

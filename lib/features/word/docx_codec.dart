@@ -128,7 +128,7 @@ sealed class DocBlock {
   DocBlock clone();
 }
 class DocTextBlock extends DocBlock {
-  DocTextBlock(DocParagraph paragraph) : paragraph = paragraph;
+  DocTextBlock(this.paragraph);
   DocParagraph paragraph;
   @override
   DocBlock clone() => DocTextBlock(paragraph.copy());
@@ -259,9 +259,7 @@ class DocxCodec {
     final parts = <String, Uint8List>{};
     for (final file in archive.files) {
       if (file.isFile) {
-        parts[file.name] = file.content is List<int>
-            ? Uint8List.fromList(file.content as List<int>)
-            : Uint8List(0);
+        parts[file.name] = Uint8List.fromList(file.content as List<int>);
       }
     }
     final docPart = parts['word/document.xml'];
@@ -660,8 +658,7 @@ class DocxCodec {
     archive.addFile(
       _bytes('word/document.xml', _documentXml(doc, mediaIds)),
     );
-    final encoded = ZipEncoder().encode(archive);
-    return encoded ?? const <int>[];
+    return ZipEncoder().encode(archive);
   }
   static ArchiveFile _bytes(String name, String content) {
     final data = utf8.encode(content);

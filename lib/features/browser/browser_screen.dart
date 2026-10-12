@@ -25,13 +25,14 @@ class _BrowserScreenState extends State<BrowserScreen> {
   final List<FsLocation> _stack = [];
   List<FsNode> _entries = const [];
   TreeRoot? _currentRoot;
+  FsLocation? _current;
   bool _loading = true;
   String? _error;
   String _query = '';
   bool _searching = false;
   Timer? _searchDebounce;
   FsLocation get _here =>
-      _stack.isEmpty ? (widget.startLocation ?? const FsLocation.local('/')) : _stack.last;
+      _current ?? widget.startLocation ?? const FsLocation.local('/');
   @override
   void initState() {
     super.initState();
@@ -121,8 +122,10 @@ class _BrowserScreenState extends State<BrowserScreen> {
       final items = await _saf.listChildren(location);
       if (!mounted) return;
       setState(() {
+        _current = location;
         _entries = items;
         _cache = null;
+        _entriesVersion++;
         _loading = false;
       });
     } catch (e) {
@@ -149,19 +152,20 @@ class _BrowserScreenState extends State<BrowserScreen> {
     });
   }
   List<FsNode>? _cache;
+  int _cacheStamp = 0;
+  int _entriesVersion = 0;
+
   List<FsNode> get _visible {
     final settings = context.read<AppSettings>();
-    final stamp = Object.hashAll([
-      _entries.length,
+    final stamp = Object.hash(
+      _entriesVersion,
       _query,
       settings.showHidden,
       settings.supportedOnly,
       settings.sortFoldersFirst,
       settings.sortBy,
       settings.gridView,
-      if (_cache != null) _cache!.first.name,
-      if (_cache != null) _cache!.last.name,
-    ]);
+    );
     if (_cache != null && _cacheStamp == stamp) return _cache!;
     var items = _entries.where((e) => settings.showHidden || !e.isHidden).toList();
     if (settings.supportedOnly) {
@@ -186,7 +190,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
     _cacheStamp = stamp;
     return items;
   }
-  int _cacheStamp = 0;
+
   int _compare(FsNode a, FsNode b, String by) {
     switch (by) {
       case 'size':

@@ -63,7 +63,36 @@ class SafBridge(private val activity: Activity) {
     private fun tree(call: MethodCall): Uri = Uri.parse(call.argument<String>("treeUri")!!)
 
     private fun doc(call: MethodCall): Uri =
-        DocumentsContract.buildDocumentUriUsingTree(tree(call), call.argument<String>("docId")!!)
+        DocumentsContract.buildDocumentUriUsingTree(
+            tree(call),
+            usableId(tree(call), call.argument<String>("docId")),
+        )
+
+    private fun usableId(treeUri: Uri, id: String?): String {
+        val trimmed = id?.trim().orEmpty()
+        if (trimmed.isNotEmpty() && trimmed != "." && trimmed != "/") return trimmed
+        return DocumentsContract.getTreeDocumentId(treeUri)
+    }
+
+    private fun singleFile(treeUri: Uri, id: String?): DocumentFile? =
+        DocumentFile.fromSingleUri(
+            activity,
+            DocumentsContract.buildDocumentUriUsingTree(treeUri, usableId(treeUri, id)),
+        )
+
+    private fun resolve(call: MethodCall): DocumentFile {
+        val treeUri = tree(call)
+        return singleFile(treeUri, call.argument<String>("docId"))
+            ?: throw IllegalStateException("Document not found: ${call.argument<String>("docId")}")
+    }
+
+    private fun parentOf(call: MethodCall): DocumentFile {
+        val treeUri = tree(call)
+        val requested = call.argument<String>("destDocId") ?: call.argument<String>("docId")
+        singleFile(treeUri, requested)?.let { if (it.isDirectory) return it }
+        singleFile(treeUri, null)?.let { if (it.isDirectory) return it }
+        throw IllegalStateException("Parent is not a directory: $requested")
+    }
 
     private fun docId(call: MethodCall): String = call.argument<String>("docId")!!
 
@@ -210,13 +239,35 @@ class SafBridge(private val activity: Activity) {
 
     private fun listChildren(call: MethodCall): List<Map<String, Any?>> {
         val treeUri = tree(call)
-        val parentId = call.argument<String>("docId") ?: DocumentsContract.getTreeDocumentId(treeUri)
-        val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, parentId)
+        val treeId = DocumentsContract.getTreeDocumentId(treeUri)
+        val requested = call.argument<String>("docId")
+        val parentId = usableId(treeUri, requested)
+        val rows = queryChildren(treeUri, parentId)
+        val resolved = if (rows.isEmpty() && parentId != treeId) {
+            queryChildren(treeUri, treeId)
+        } else if (rows.isEmpty()) {
+            listViaDocumentFile(treeUri, parentId)
+        } else {
+            rows
+        }
+        resolved.sortWith(
+            compareByDescending<Map<String, Any?>> { it["isDir"] as Boolean }
+                .thenBy { (it["name"] as String).lowercase() }
+        )
+        return resolved
+    }
+
+    private fun queryChildren(
+        treeUri: Uri,
+        parentId: String,
+    ): MutableList<Map<String, Any?>> {
         val out = mutableListOf<Map<String, Any?>>()
-        resolver.query(childrenUri, null, null, null, null)?.use { cursor ->
-            val idIdx = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
-            val nameIdx = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
-            val mimeIdx = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_MIME_TYPE)
+        val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, parentId)
+        try {
+            resolver.query(childrenUri, null, null, null, null)?.use { cursor ->
+                val idIdx = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+                val nameIdx = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+                val mimeIdx = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_MIME_TYPE)
             val sizeIdx = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_SIZE)
             val modIdx = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_LAST_MODIFIED)
             val flagIdx = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_FLAGS)
@@ -230,6 +281,7 @@ class SafBridge(private val activity: Activity) {
                 out.add(
                     mapOf(
                         "docId" to id,
+                        "treeUri" to treeUri.toString(),
                         "name" to (if (nameIdx >= 0) cursor.getString(nameIdx) else id.substringAfterLast('/')),
                         "mime" to mime,
                         "isDir" to isDir,
@@ -241,11 +293,41 @@ class SafBridge(private val activity: Activity) {
                     )
                 )
             }
+            }
+        } catch (_: Exception) {
         }
-        out.sortWith(
-            compareByDescending<Map<String, Any?>> { it["isDir"] as Boolean }
-                .thenBy { (it["name"] as String).lowercase() }
-        )
+        return out
+    }
+
+    private fun listViaDocumentFile(treeUri: Uri, parentId: String): MutableList<Map<String, Any?>> {
+        val out = mutableListOf<Map<String, Any?>>()
+        try {
+            val parent = DocumentFile.fromSingleUri(
+                activity,
+                DocumentsContract.buildDocumentUriUsingTree(treeUri, parentId),
+            ) ?: return out
+            for (file in parent.listFiles()) {
+                val flags = 0
+                out.add(
+                    mapOf(
+                        "docId" to Uri.decode(
+                            file.uri.toString().substringAfter("/document/"),
+                        ),
+                        "treeUri" to treeUri.toString(),
+                        "name" to (file.name ?: "Без имени"),
+                        "mime" to (file.type ?: "application/octet-stream"),
+                        "isDir" to file.isDirectory,
+                        "size" to (if (file.isFile) file.length() else -1L),
+                        "modified" to file.lastModified(),
+                        "canWrite" to file.canWrite(),
+                        "canDelete" to true,
+                        "canRename" to true,
+                        "flags" to flags,
+                    ),
+                )
+            }
+        } catch (_: Exception) {
+        }
         return out
     }
 
@@ -327,28 +409,52 @@ class SafBridge(private val activity: Activity) {
         return true
     }
 
-    private fun createFile(call: MethodCall): String {
-        val treeUri = tree(call)
-        val parentId = call.argument<String>("docId")!!
-        val name = call.argument<String>("name")!!
-        val mime = call.argument<String>("mime") ?: "application/octet-stream"
-        val dir = DocumentFile.fromTreeUri(activity, treeUri) ?: throw IllegalStateException("Bad tree")
-        val parent = dir.findFile(parentId) ?: throw IllegalStateException("Missing parent")
-        val file = parent.createFile(mime, name) ?: throw IllegalStateException("Create failed")
-        if (file.name != null && file.name != name) {
-            file.renameTo(name)
-        }
-        return file.uri.toString()
-    }
+    private fun createFile(call: MethodCall): String =
+        createEntry(call, call.argument<String>("mime") ?: "application/octet-stream")
 
-    private fun createDir(call: MethodCall): String {
+    private fun createDir(call: MethodCall): String =
+        createEntry(call, DocumentsContract.Document.MIME_TYPE_DIR)
+
+    private fun createEntry(call: MethodCall, mime: String): String {
         val treeUri = tree(call)
-        val parentId = call.argument<String>("docId")!!
-        val name = call.argument<String>("name")!!
-        val dir = DocumentFile.fromTreeUri(activity, treeUri) ?: throw IllegalStateException("Bad tree")
-        val parent = dir.findFile(parentId) ?: throw IllegalStateException("Missing parent")
-        val created = parent.createDirectory(name) ?: throw IllegalStateException("Mkdir failed")
-        return created.uri.toString()
+        val name = call.argument<String>("name")!!.trim()
+        if (name.isEmpty()) throw IllegalArgumentException("Empty name")
+        val treeId = DocumentsContract.getTreeDocumentId(treeUri)
+        val candidates =
+            listOf(usableId(treeUri, call.argument<String>("docId")), treeId).distinct()
+        var failure: Exception? = null
+        for (parentId in candidates) {
+            val parentUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, parentId)
+            try {
+                val created = DocumentsContract.createDocument(resolver, parentUri, mime, name)
+                if (created == null) {
+                    failure = IllegalStateException("provider returned null")
+                    continue
+                }
+                if (mime != DocumentsContract.Document.MIME_TYPE_DIR) {
+                    val actual = DocumentsContract.getDocumentId(created)
+                        .substringAfterLast('/')
+                    if (actual != name) {
+                        try {
+                            DocumentsContract.renameDocument(resolver, created, name)
+                        } catch (_: Exception) {
+                        }
+                    }
+                }
+                return created.toString()
+            } catch (e: SecurityException) {
+                failure = e
+            } catch (e: UnsupportedOperationException) {
+                failure = e
+            } catch (e: Exception) {
+                failure = e
+            }
+        }
+        val why = failure?.message ?: failure?.javaClass?.simpleName ?: "unknown"
+        throw IllegalStateException(
+            "Create '$name' failed ($why)",
+            failure,
+        )
     }
 
     private fun deleteEntry(call: MethodCall): Boolean {
@@ -374,9 +480,9 @@ class SafBridge(private val activity: Activity) {
         val source = doc(call)
         val targetTree = Uri.parse(call.argument<String>("destTreeUri")!!)
         val parentId = call.argument<String>("destDocId")!!
-        val dir = DocumentFile.fromTreeUri(activity, targetTree)
-            ?: throw IllegalStateException("Bad tree")
-        val parent = dir.findFile(parentId) ?: throw IllegalStateException("Missing parent")
+        val parentUri = DocumentsContract.buildDocumentUriUsingTree(targetTree, parentId)
+        val parent = DocumentFile.fromSingleUri(activity, parentUri)
+            ?: throw IllegalStateException("Parent not found: $parentId")
         val sourceName = call.argument<String>("name")
         val newName = call.argument<String>("newName")
             ?: sourceName

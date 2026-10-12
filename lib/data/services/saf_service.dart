@@ -48,7 +48,16 @@ Future<TreeRoot?> pickTree() async {
       location.toArgs(),
     );
     if (res == null) return const [];
-    return res.map(_nodeFromMap).toList(growable: false);
+    final treeUri = location.treeUri;
+    final out = <FsNode>[];
+    for (final row in res) {
+      try {
+        out.add(_nodeFromMap(row, treeUri: treeUri));
+      } catch (_) {
+        if (row['name'] == null && row['docId'] == null) continue;
+      }
+    }
+    return out;
   }
   List<FsNode> _listLocal(String dir) {
     final out = <FsNode>[];
@@ -80,10 +89,15 @@ Future<TreeRoot?> pickTree() async {
     });
     return out;
   }
-  FsNode _nodeFromMap(Map<dynamic, dynamic> m) {
+  FsNode _nodeFromMap(Map<dynamic, dynamic> m, {String? treeUri}) {
     final modifiedMillis = (m['modified'] as num?)?.toInt() ?? 0;
+    final docId = m['docId'] as String?;
+    final tree = (m['treeUri'] as String?) ?? treeUri;
+    final location = tree != null && docId != null
+        ? FsLocation.saf(treeUri: tree, docId: docId)
+        : FsLocation.fromMap(m);
     return FsNode(
-      location: FsLocation.fromMap(m),
+      location: location,
       name: (m['name'] as String?) ?? '',
       isDirectory: (m['isDir'] as bool?) ?? false,
       mime: (m['mime'] as String?) ?? 'application/octet-stream',

@@ -525,22 +525,6 @@ class FormulaEngine {
     }
     return out;
   }
-  List<String> _flattenText(List<dynamic> args) {
-    final out = <String>[];
-    void walk(dynamic v) {
-      if (v is List) {
-        for (final item in v) {
-          walk(item);
-        }
-      } else if (v != null) {
-        out.add(_asText(v));
-      }
-    }
-    for (final arg in args) {
-      walk(arg);
-    }
-    return out;
-  }
   dynamic _binary(String op, dynamic left, dynamic right) {
     switch (op) {
       case '+':
@@ -581,7 +565,6 @@ class FormulaEngine {
     _lastError = error;
   }
   double _pow(double base, double exponent) {
-    final result = 1.0;
     if (exponent == exponent.roundToDouble()) {
       var b = base;
       var e = exponent.abs().round();
@@ -1303,7 +1286,7 @@ class XlsxCodec {
     final archive = ZipDecoder().decodeBytes(bytes);
     final parts = <String, Uint8List>{};
     for (final file in archive.files) {
-      if (file.isFile && file.content is List<int>) {
+      if (file.isFile) {
         parts[file.name] = Uint8List.fromList(file.content as List<int>);
       }
     }
@@ -1573,11 +1556,6 @@ class XlsxCodec {
         }
       }
     }
-    for (final sheet in wb.sheets) {
-      for (final chart in sheet.charts) {
-        intern('Chart');
-      }
-    }
     archive.addFile(_bytes('[Content_Types].xml', _contentTypes(wb)));
     archive.addFile(_bytes('_rels/.rels', _rootRels));
     archive.addFile(
@@ -1600,8 +1578,7 @@ class XlsxCodec {
         ),
       );
     }
-    final encoded = ZipEncoder().encode(archive);
-    return encoded ?? const <int>[];
+    return ZipEncoder().encode(archive);
   }
   static ArchiveFile _bytes(String name, String content) {
     final data = utf8.encode(content);

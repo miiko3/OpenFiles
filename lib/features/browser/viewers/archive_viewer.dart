@@ -150,12 +150,7 @@ class _ArchiveViewerState extends State<ArchiveViewer> {
     );
   }
   Future<void> _open(ArchiveFile file) async {
-    final data = file.content;
-    final bytes = data is List<int> ? Uint8List.fromList(data) : null;
-    if (bytes == null) {
-      if (mounted) _toast('Unsupported entry');
-      return;
-    }
+    final bytes = Uint8List.fromList(file.content as List<int>);
     final kind = kindForName(file.name);
     final name = file.name.split('/').last;
     if (kind == FileKind.text || kind == FileKind.code || kind == FileKind.markdown) {
@@ -179,10 +174,6 @@ class _ArchiveViewerState extends State<ArchiveViewer> {
         builder: (_) => HexArchivePage(name: name, bytes: bytes),
       ),
     );
-  }
-  void _toast(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 class TextArchivePage extends StatelessWidget {

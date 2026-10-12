@@ -17,7 +17,6 @@ class _MediaViewerState extends State<MediaViewer> {
   final _saf = SafService.instance;
   VideoPlayerController? _video;
   AudioPlayer? _audio;
-  String? _path;
   String? _error;
   bool _loading = true;
   bool _videoReady = false;
@@ -50,20 +49,17 @@ class _MediaViewerState extends State<MediaViewer> {
         }
         setState(() {
           _video = controller;
-          _path = path;
           _loading = false;
           _videoReady = true;
         });
       } else {
         final player = AudioPlayer();
-        final source = File(path);
         await player.setFilePath(path);
         final length = player.duration;
         await player.play();
         if (!mounted) return;
         setState(() {
           _audio = player;
-          _path = path;
           _loading = false;
         });
         player.positionStream.listen((_) {

@@ -21,6 +21,8 @@ class _SheetEditorState extends State<SheetEditor> {
   final _hScroll = ScrollController();
   final _vScroll = ScrollController();
   final _formulaController = TextEditingController();
+  final _cellController = TextEditingController();
+  final _cellFocus = FocusNode(debugLabel: 'sheetCell');
   late Workbook _wb;
   final List<Workbook> _undo = [];
   final List<Workbook> _redo = [];
@@ -32,7 +34,8 @@ class _SheetEditorState extends State<SheetEditor> {
   int? _frozenRow;
   int? _frozenCol;
   int _sheetIndex = 0;
-  bool _editing = false;
+  int? _editRow;
+  int? _editCol;
   static const double rowHeight = 32;
   static const double defaultColWidth = 104;
   static const double headerWidth = 46;
@@ -49,6 +52,8 @@ class _SheetEditorState extends State<SheetEditor> {
     _hScroll.dispose();
     _vScroll.dispose();
     _formulaController.dispose();
+    _cellController.dispose();
+    _cellFocus.dispose();
     super.dispose();
   }
   Future<void> _load() async {
@@ -100,29 +105,21 @@ class _SheetEditorState extends State<SheetEditor> {
   int get _totalRows => _sheet.maxRow + extraRows;
   int get _totalCols => _sheet.maxCol + extraCols;
   double _colWidth(int col) => _sheet.colWidths[col] ?? defaultColWidth;
-  double _viewportWidth = 600;
   int _firstCol = 0;
   int _lastCol = 0;
-  double _rowsPerScreen = 10;
+  double _windowWidth = 0;
   void _recalcViewport(double width, double height) {
-    _viewportWidth = width;
-    var start = 0;
-    var used = 0.0;
-    for (var col = 0; col < _totalCols; col++) {
-      final w = _colWidth(col);
-      if (used + w > width) break;
-      used += w;
-      start = col + 1;
-    }
-    _firstCol = start;
-    var end = start;
-    var visible = 0.0;
-    while (end < _totalCols && visible < width) {
-      visible += _colWidth(end);
+    var end = 1;
+    var visible = _colWidth(0);
+    while (end < _totalCols) {
+      final next = visible + _colWidth(end);
+      if (next > width) break;
+      visible = next;
       end++;
     }
-    _lastCol = end;
-    _rowsPerScreen = (height / rowHeight).ceil() + 2;
+    _firstCol = 0;
+    _lastCol = end.clamp(1, _totalCols);
+    _windowWidth = visible;
   }
   String _display(int row, int col) {
     final cell = _sheet.cellAt(row, col);
@@ -142,13 +139,73 @@ class _SheetEditorState extends State<SheetEditor> {
     }
     return FormulaEngine.displayOf(cell);
   }
-  void _setActive(int row, int col) {
+  void _setActive(int row, int col, {bool edit = true}) {
+    _commitEditing();
     setState(() {
       _row = row;
       _col = col;
-      _editing = false;
       _syncFormula();
     });
+    if (edit) _beginEdit(row, col);
+  }
+
+  bool get _editing => _editRow != null;
+
+  void _beginEdit(int row, int col) {
+    final cell = _sheet.cellAt(row, col);
+    _editRow = row;
+    _editCol = col;
+    _cellController.text = cell.type == CellType.formula
+        ? '=${cell.formula}'
+        : FormulaEngine.displayOf(cell);
+    _cellController.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: _cellController.text.length,
+    );
+    setState(() {});
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _cellFocus.requestFocus();
+    });
+  }
+
+  void _commitEditing() {
+    final row = _editRow;
+    final col = _editCol;
+    if (row == null || col == null) return;
+    _editRow = null;
+    _editCol = null;
+    _commit(row, col, _cellController.text);
+  }
+
+  void _cancelEditing() {
+    if (_editRow == null) return;
+    _editRow = null;
+    _editCol = null;
+    setState(() {});
+  }
+
+  KeyEventResult _onCellKey(KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    final shift =
+        HardwareKeyboard.instance.isShiftPressed ||
+        RawKeyboard.instance.keysPressed.any((k) => k == LogicalKeyboardKey.shiftLeft);
+    if (key == LogicalKeyboardKey.enter || key == LogicalKeyboardKey.numpadEnter) {
+      _commitEditing();
+      _move(1, 0);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.tab) {
+      _commitEditing();
+      _move(0, shift ? -1 : 1);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.escape) {
+      _cancelEditing();
+      _syncFormula();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
   }
   void _syncFormula() {
     final cell = _sheet.cellAt(_row, _col);
@@ -178,7 +235,7 @@ class _SheetEditorState extends State<SheetEditor> {
       }
     }
     setState(() {
-      _sheet.cells[row]?[col] = cell;
+      _sheet.cells.putIfAbsent(row, () => <int, Cell>{})[col] = cell;
       _dirty = true;
     });
   }
@@ -188,6 +245,7 @@ class _SheetEditorState extends State<SheetEditor> {
       _col = (_col + colDelta).clamp(0, _totalCols - 1);
       _syncFormula();
     });
+    if (_editing) _beginEdit(_row, _col);
   }
   void _styleCell(int row, int col, CellStyle style) {
     final cell = _sheet.cellAt(row, col);
@@ -296,6 +354,7 @@ class _SheetEditorState extends State<SheetEditor> {
     });
   }
   Future<void> _save() async {
+    _commitEditing();
     try {
       final bytes = await XlsxCodec.save(_wb);
       await _saf.writeBytes(widget.node, bytes);
@@ -736,14 +795,14 @@ class _SheetEditorState extends State<SheetEditor> {
                     controller: _hScroll,
                     scrollDirection: Axis.horizontal,
                 child: SizedBox(
-                  width: _totalCols * defaultColWidth,
+                  width: _windowWidth,
                   child: Column(
                     children: [
                       SizedBox(
                         height: rowHeight,
                         child: Row(
                           children: [
-                            for (var col = 0; col < _totalCols; col++)
+                            for (var col = _firstCol; col < _lastCol; col++)
                               SizedBox(
                                 width: _colWidth(col),
                                 child: _colHeader(col, c),
@@ -915,10 +974,9 @@ class _SheetEditorState extends State<SheetEditor> {
     final cell = _sheet.cellAt(row, col);
     final active = row == _row && col == _col;
     final value = _display(row, col);
-    final controller = TextEditingController(text: cell.type == CellType.formula ? '=${cell.formula}' : value);
     return GestureDetector(
       onTap: () => _setActive(row, col),
-      onDoubleTap: () => _editCell(row, col, value),
+      onDoubleTap: () => _beginEdit(row, col),
       child: Container(
         decoration: BoxDecoration(
           color: cell.style.fillColor != null
@@ -933,10 +991,15 @@ class _SheetEditorState extends State<SheetEditor> {
         ),
         alignment: Alignment.centerLeft,
         padding: const EdgeInsets.symmetric(horizontal: 6),
-        child: _editing
-            ? TextField(
-                controller: controller,
+        child: (_editRow == row && _editCol == col)
+            ? Focus(
+                onKeyEvent: (node, event) => _onCellKey(event),
+                child: TextField(
+                controller: _cellController,
+                focusNode: _cellFocus,
                 autofocus: true,
+                textInputAction: TextInputAction.done,
+                keyboardType: TextInputType.text,
                 style: TextStyle(
                   fontSize: cell.style.fontSize,
                   color: c.text,
@@ -949,10 +1012,10 @@ class _SheetEditorState extends State<SheetEditor> {
                   isDense: true,
                 ),
                 onSubmitted: (v) {
-                  _commit(row, col, v);
-                  _syncFormula();
+                  _commitEditing();
                   _move(1, 0);
                 },
+              ),
               )
             : Text(
                 value,
@@ -982,34 +1045,6 @@ class _SheetEditorState extends State<SheetEditor> {
               ),
       ),
     );
-  }
-  Future<void> _editCell(int row, int col, String initial) async {
-    final controller = TextEditingController(text: initial);
-    final result = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(cellRef(row, col)),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(hintText: 'Значение или =формула'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(controller.text),
-            child: const Text('Применить'),
-          ),
-        ],
-      ),
-    );
-    if (result != null) {
-      _commit(row, col, result);
-      _syncFormula();
-    }
   }
   Future<void> _paste() async {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
