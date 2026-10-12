@@ -520,8 +520,8 @@ class DocxCodec {
     for (final child in element.childElements) {
       switch (child.name.local) {
         case 'pgSz':
-          width = _emuToPoints(child.getAttribute('w:w'));
-          height = _emuToPoints(child.getAttribute('w:h'));
+          width = _twipsToPoints(child.getAttribute('w:w'));
+          height = _twipsToPoints(child.getAttribute('w:h'));
         case 'pgMar':
           top = _twipsToPoints(child.getAttribute('w:top'));
           bottom = _twipsToPoints(child.getAttribute('w:bottom'));
@@ -534,14 +534,24 @@ class DocxCodec {
       }
     }
     return DocPageSetup(
-      pageWidthPt: width ?? DocPageSetup.a4.pageWidthPt,
-      pageHeightPt: height ?? DocPageSetup.a4.pageHeightPt,
-      marginTopPt: top ?? DocPageSetup.a4.marginTopPt,
-      marginBottomPt: bottom ?? DocPageSetup.a4.marginBottomPt,
-      marginLeftPt: left ?? DocPageSetup.a4.marginLeftPt,
-      marginRightPt: right ?? DocPageSetup.a4.marginRightPt,
+      pageWidthPt: _sane(width, DocPageSetup.a4.pageWidthPt),
+      pageHeightPt: _sane(height, DocPageSetup.a4.pageHeightPt),
+      marginTopPt: _sane(top, DocPageSetup.a4.marginTopPt, min: 0, max: 500),
+      marginBottomPt: _sane(bottom, DocPageSetup.a4.marginBottomPt, min: 0, max: 500),
+      marginLeftPt: _sane(left, DocPageSetup.a4.marginLeftPt, min: 0, max: 500),
+      marginRightPt: _sane(right, DocPageSetup.a4.marginRightPt, min: 0, max: 500),
       columns: columns < 1 ? 1 : columns,
     );
+  }
+
+  static double _sane(
+    double? value,
+    double fallback, {
+    double min = 72,
+    double max = 5000,
+  }) {
+    if (value == null || value.isNaN || value < min || value > max) return fallback;
+    return value;
   }
   static Map<String, DocList> _readNumbering(Uint8List? bytes) {
     final out = <String, DocList>{};
@@ -1130,11 +1140,7 @@ class DocxCodec {
     final v = double.tryParse(value ?? '');
     return v == null ? null : v / 20;
   }
-  static double? _emuToPoints(String? value) {
-    final v = double.tryParse(value ?? '');
-    return v == null ? null : v / 12700;
-  }
-  static int? _parseHexColor(String? value) {
+static int? _parseHexColor(String? value) {
     if (value == null || value.length < 6) return null;
     if (value == 'auto') return null;
     final parsed = int.tryParse(value.substring(0, 6), radix: 16);

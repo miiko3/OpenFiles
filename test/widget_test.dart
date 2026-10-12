@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:archive/archive.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:openfiles/core/l10n.dart';
@@ -14,6 +15,39 @@ import 'package:openfiles/features/sheet/sheet_codec.dart';
 import 'package:openfiles/features/slides/pptx_codec.dart' as ppt;
 import 'package:openfiles/features/word/docx_codec.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+Archive _docxWithSectPr(String sectPr) {
+  final archive = Archive();
+  void put(String name, String xml) {
+    archive.addFile(
+      ArchiveFile(name, utf8.encode(xml).length, utf8.encode(xml)),
+    );
+  }
+
+  put(
+    '[Content_Types].xml',
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+    '<Default Extension="xml" ContentType="application/xml"/>'
+    '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'
+    '</Types>',
+  );
+  put(
+    '_rels/.rels',
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>'
+    '</Relationships>',
+  );
+  put(
+    'word/document.xml',
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+    '<w:body><w:p><w:r><w:t>Hello</w:t></w:r></w:p>$sectPr</w:body></w:document>',
+  );
+  return archive;
+}
 
 Set<String> resolvedKeysOf(AppLanguage language) {
   L10n.language = language;
@@ -96,6 +130,29 @@ void main() {
       expect(back.blocks.whereType<DocBreakBlock>().length, 1);
       expect(back.pageSetup.columns, 2);
       expect(back.wordCount, 3);
+    });
+
+    test('page size from a real docx is points, not emu', () async {
+      const sectPr =
+          '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/>'
+          '<w:pgMar w:top="1134" w:right="1701" w:bottom="1134" w:left="1701"/>'
+          '</w:sectPr>';
+      final archive = ZipEncoder().encode(_docxWithSectPr(sectPr));
+      final back = await DocxCodec.load(archive);
+
+      expect(back.pageSetup.pageWidthPt, closeTo(595.3, 0.2));
+      expect(back.pageSetup.pageHeightPt, closeTo(841.9, 0.2));
+      expect(back.pageSetup.marginLeftPt, closeTo(85.05, 0.2));
+      expect(back.pageSetup.marginTopPt, closeTo(56.7, 0.2));
+    });
+
+    test('absurd page size falls back to a4 instead of breaking layout', () async {
+      const sectPr = '<w:sectPr><w:pgSz w:w="11906" w:h="1"/></w:sectPr>';
+      final archive = ZipEncoder().encode(_docxWithSectPr(sectPr));
+      final back = await DocxCodec.load(archive);
+
+      expect(back.pageSetup.pageWidthPt, closeTo(595.3, 0.2));
+      expect(back.pageSetup.pageHeightPt, DocPageSetup.a4.pageHeightPt);
     });
 
     test('malformed input does not throw', () async {
