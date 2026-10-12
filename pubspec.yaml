@@ -1,7 +1,7 @@
 name: openfiles
 description: Android file manager and editor that opens and edits every file type in place.
 publish_to: 'none'
-version: 1.0.4+5
+version: 1.0.5+6
 
 environment:
   sdk: ^3.13.5

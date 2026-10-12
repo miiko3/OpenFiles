@@ -386,6 +386,21 @@ void main() {
       expect(english.difference(russian), isEmpty);
     });
 
+    test('russian and english tables declare the same keys', () {
+      final russian = resolvedKeysOf(AppLanguage.ru);
+      final english = resolvedKeysOf(AppLanguage.en);
+      expect(
+        russian.difference(english),
+        isEmpty,
+        reason: 'missing english: ${russian.difference(english).toList()}',
+      );
+      expect(
+        english.difference(russian),
+        isEmpty,
+        reason: 'missing russian: ${english.difference(russian).toList()}',
+      );
+    });
+
     test('placeholders in formatted strings are resolved', () {
       expect(tf('settings.added', {'label': 'Download'}), contains('Download'));
       expect(tf('settings.added', {'label': 'Download'}), isNot(contains('{')));
