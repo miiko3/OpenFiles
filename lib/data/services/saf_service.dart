@@ -15,12 +15,13 @@ class SafService {
   static final SafService instance = SafService._();
   static const _saf = MethodChannel('com.openfiles/saf');
   static const _inbox = MethodChannel('com.openfiles/inbox');
-  Future<TreeRoot?> pickTree() async {
+Future<TreeRoot?> pickTree() async {
     final res = await _saf.invokeMethod<Map<dynamic, dynamic>>('pickTree');
     if (res == null) return null;
     return TreeRoot(
       treeUri: res['treeUri'] as String,
-      label: (res['label'] as String?) ?? 'Storage',
+      docId: (res['docId'] as String?) ?? '',
+      label: (res['label'] as String?) ?? 'Хранилище',
     );
   }
   Future<List<FsLocation>> pickFiles({bool multiple = false, String? mime}) async {

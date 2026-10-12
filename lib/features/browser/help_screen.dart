@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+
 import '../../core/l10n.dart';
 import '../../core/theme/tokens.dart';
 import '../../data/providers/app_settings.dart';
 import '../../widgets/common.dart';
+
 class AuthorLink {
   const AuthorLink({
     required this.label,
@@ -13,11 +14,13 @@ class AuthorLink {
     required this.icon,
     required this.tint,
   });
+
   final String label;
   final String url;
   final IconData icon;
   final Color tint;
 }
+
 const List<AuthorLink> authorLinks = [
   AuthorLink(
     label: 'GitHub',
@@ -44,8 +47,17 @@ const List<AuthorLink> authorLinks = [
     tint: Color(0xFF7F9079),
   ),
 ];
+
+Future<void> openAuthorLink(String url) async {
+  final uri = Uri.parse(url);
+  if (await canLaunchUrl(uri)) {
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+}
+
 class AuthorCard extends StatelessWidget {
   const AuthorCard({super.key});
+
   @override
   Widget build(BuildContext context) {
     final c = context.c;
@@ -67,7 +79,11 @@ class AuthorCard extends StatelessWidget {
                   ),
                   borderRadius: AppRadius.md,
                 ),
-                child: const Icon(Icons.person_rounded, color: Colors.white, size: 22),
+                child: const Icon(
+                  Icons.person_rounded,
+                  color: Colors.white,
+                  size: 22,
+                ),
               ),
               const SizedBox(width: AppSpace.md),
               Expanded(
@@ -88,36 +104,21 @@ class AuthorCard extends StatelessWidget {
             spacing: AppSpace.sm,
             runSpacing: AppSpace.sm,
             children: [
-              for (final link in authorLinks)
-                _chip(context, link),
+              for (final link in authorLinks) _chip(context, link),
             ],
           ),
-          const SizedBox(height: AppSpace.lg),
-          Divider(color: c.border, height: 1),
-          const SizedBox(height: AppSpace.md),
-          Text(
-            t('author.title2'),
-            style: context.t.labelSmall?.copyWith(color: c.primary),
-          ),
-          const SizedBox(height: AppSpace.sm),
-          _donate(context),
         ],
       ),
     );
   }
+
   Widget _chip(BuildContext context, AuthorLink link) {
-    final c = context.c;
     return Material(
       color: link.tint.withValues(alpha: 0.12),
       borderRadius: AppRadius.pill,
       child: InkWell(
         borderRadius: AppRadius.pill,
-        onTap: () async {
-          final uri = Uri.parse(link.url);
-          if (await canLaunchUrl(uri)) {
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
-          }
-        },
+        onTap: () => openAuthorLink(link.url),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(
@@ -135,100 +136,49 @@ class AuthorCard extends StatelessWidget {
       ),
     );
   }
-  Widget _donate(BuildContext context) {
-    final c = context.c;
-    final link = authorLinks.firstWhere((e) => e.label == 'YooMoney');
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(AppSpace.md),
-          decoration: BoxDecoration(
-            color: c.surfaceAlt,
-            borderRadius: AppRadius.md,
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.qr_code_2_rounded, size: 22, color: Color(0xFF7F9079)),
-              const SizedBox(width: AppSpace.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(link.label, style: context.t.labelLarge),
-                    Text(link.url, style: context.t.labelSmall),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: AppSpace.sm),
-        Wrap(
-          spacing: AppSpace.sm,
-          children: [
-            PillButton(
-              label: t('author.copy'),
-              icon: Icons.copy_rounded,
-              dense: true,
-              onPressed: () async {
-                await Clipboard.setData(ClipboardData(text: link.url));
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(t('author.copied'))),
-                );
-              },
-            ),
-            PillButton(
-              label: 'Boosty',
-              icon: Icons.open_in_new_rounded,
-              primary: true,
-              dense: true,
-              onPressed: () async {
-                final uri = Uri.parse(authorLinks[2].url);
-                if (await canLaunchUrl(uri)) {
-                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                }
-              },
-            ),
-          ],
-        ),
-      ],
-    );
-  }
 }
+
 class HelpScreen extends StatelessWidget {
   const HelpScreen({super.key});
-  static const List<(String, IconData)> _sections = [
-    ('help.accessTitle', Icons.folder_special_outlined),
-    ('help.browserTitle', Icons.folder_open_rounded),
-    ('help.formatsTitle', Icons.checklist_rtl_rounded),
-    ('help.editingTitle', Icons.edit_rounded),
-    ('help.pdfTitle', Icons.picture_as_pdf_outlined),
-    ('help.slidesTitle', Icons.slideshow_outlined),
-    ('help.storageTitle', Icons.sd_storage_outlined),
-    ('help.themesTitle', Icons.palette_outlined),
+
+  static const List<(String, String, IconData)> _sections = [
+    ('help.accessTitle', 'help.accessText', Icons.folder_special_outlined),
+    ('help.browserTitle', 'help.browserText', Icons.folder_open_rounded),
+    (
+      'help.formatsTitle',
+      'help.formatsText',
+      Icons.checklist_rtl_rounded,
+    ),
+    ('help.editingTitle', 'help.editingText', Icons.edit_rounded),
+    ('help.pdfTitle', 'help.pdfText', Icons.picture_as_pdf_outlined),
+    ('help.slidesTitle', 'help.slidesText', Icons.slideshow_outlined),
+    ('help.storageTitle', 'help.storageText', Icons.sd_storage_outlined),
+    ('help.themesTitle', 'help.themesText', Icons.palette_outlined),
   ];
+
   @override
   Widget build(BuildContext context) {
     final c = context.c;
+    final settings = context.read<AppSettings>();
+
     return Scaffold(
       appBar: AppBar(
         title: Text(t('help.title')),
         actions: [
           RoundIconButton(
-            icon: Icons.dark_mode_rounded,
-            tooltip: t('settings.themeDark'),
+            icon: settings.themeMode == AppThemeMode.dark
+                ? Icons.light_mode_outlined
+                : Icons.dark_mode_outlined,
+            tooltip: settings.themeMode == AppThemeMode.dark
+                ? t('settings.themeLight')
+                : t('settings.themeDark'),
             size: 34,
             iconSize: 18,
-            onPressed: () {
-              final settings = context.read<AppSettings>();
-              settings.setThemeMode(
-                settings.themeMode == AppThemeMode.dark
-                    ? AppThemeMode.light
-                    : AppThemeMode.dark,
-              );
-            },
+            onPressed: () => settings.setThemeMode(
+              settings.themeMode == AppThemeMode.dark
+                  ? AppThemeMode.light
+                  : AppThemeMode.dark,
+            ),
           ),
           const SizedBox(width: AppSpace.sm),
         ],
@@ -249,9 +199,7 @@ class HelpScreen extends StatelessWidget {
               children: [
                 Icon(Icons.info_outline_rounded, color: c.primary, size: 20),
                 const SizedBox(width: AppSpace.md),
-                Expanded(
-                  child: Text(t('help.intro'), style: context.t.bodyMedium),
-                ),
+                Expanded(child: Text(t('help.intro'), style: context.t.bodyMedium)),
               ],
             ),
           ),
@@ -265,7 +213,7 @@ class HelpScreen extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Icon(section.$2, size: 18, color: c.primary),
+                        Icon(section.$3, size: 18, color: c.primary),
                         const SizedBox(width: AppSpace.sm),
                         Expanded(
                           child: Text(
@@ -277,7 +225,7 @@ class HelpScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: AppSpace.sm),
                     Text(
-                      t('${section.$1}Text'),
+                      t(section.$2),
                       style: context.t.bodySmall?.copyWith(height: 1.55),
                     ),
                   ],

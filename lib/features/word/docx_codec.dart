@@ -248,10 +248,6 @@ class WordDocument {
         images: Map<String, Uint8List>.from(images),
       );
 }
-const Map<int, DocList> _numberingKinds = {
-  1: DocList.bullet,
-  2: DocList.ordered,
-};
 class DocxCodec {
   const DocxCodec._();
   static Future<WordDocument> load(List<int> bytes) async =>
@@ -285,9 +281,13 @@ class DocxCodec {
     for (final child in body.childElements) {
       switch (child.name.local) {
         case 'p':
-          document.blocks.add(
-            DocTextBlock(_readParagraph(child, numbering, headingByStyle)),
-          );
+          if (_isPageBreakOnly(child)) {
+            document.blocks.add(DocBreakBlock());
+          } else {
+            document.blocks.add(
+              DocTextBlock(_readParagraph(child, numbering, headingByStyle)),
+            );
+          }
         case 'tbl':
           final table = _readTable(child);
           if (table != null) document.blocks.add(DocTableBlock(table));
@@ -306,6 +306,26 @@ class DocxCodec {
     document.meta = _readCore(parts['docProps/core.xml']);
     return document;
   }
+  static bool _isPageBreakOnly(XmlElement element) {
+    var hasBreak = false;
+    var hasContent = false;
+    for (final child in element.childElements) {
+      if (child.name.local == 'pPr') continue;
+      if (child.name.local != 'r') continue;
+      for (final part in child.childElements) {
+        switch (part.name.local) {
+          case 'br':
+            if (part.getAttribute('w:type') == 'page') {
+              hasBreak = true;
+            }
+          case 't':
+            if (part.innerText.trim().isNotEmpty) hasContent = true;
+        }
+      }
+    }
+    return hasBreak && !hasContent;
+  }
+
   static DocParagraph _readParagraph(
     XmlElement element,
     Map<String, DocList> numbering,
@@ -337,7 +357,7 @@ class DocxCodec {
           buffer.write('\t');
           found = true;
         case 'br':
-          if (child.getAttribute('type') == 'page') {
+          if (child.getAttribute('w:type') == 'page') {
             buffer.write('\f');
           } else {
             buffer.write('\n');
@@ -364,30 +384,30 @@ class DocxCodec {
     for (final child in element.childElements) {
       switch (child.name.local) {
         case 'rFonts':
-          family = child.getAttribute('ascii') ?? family;
+          family = child.getAttribute('w:ascii') ?? family;
         case 'sz':
-          final raw = double.tryParse(child.getAttribute('val') ?? '');
+          final raw = double.tryParse(child.getAttribute('w:val') ?? '');
           if (raw != null) size = raw / 2;
         case 'b':
-          final v = child.getAttribute('val');
+          final v = child.getAttribute('w:val');
           bold = v == null || v == '1' || v == 'true';
         case 'i':
-          final v = child.getAttribute('val');
+          final v = child.getAttribute('w:val');
           italic = v == null || v == '1' || v == 'true';
         case 'u':
-          final v = child.getAttribute('val');
+          final v = child.getAttribute('w:val');
           underline = v != null && v != 'none';
         case 'strike':
-          final v = child.getAttribute('val');
+          final v = child.getAttribute('w:val');
           strike = v == null || v == '1' || v == 'true';
         case 'color':
-          color = _parseHexColor(child.getAttribute('val'));
+          color = _parseHexColor(child.getAttribute('w:val'));
         case 'highlight':
           highlight = _parseHexColor(
-            _highlightMap[child.getAttribute('val')] ?? 'FFFF00',
+            _highlightMap[child.getAttribute('w:val')] ?? 'FFFF00',
           );
         case 'vertAlign':
-          final v = child.getAttribute('val');
+          final v = child.getAttribute('w:val');
           super_ = v == 'superscript';
           sub_ = v == 'subscript';
       }
@@ -423,42 +443,42 @@ class DocxCodec {
     for (final child in element.childElements) {
       switch (child.name.local) {
         case 'pStyle':
-          heading = headingByStyle[child.getAttribute('val') ?? ''];
+          heading = headingByStyle[child.getAttribute('w:val') ?? ''];
         case 'jc':
-          align = switch (child.getAttribute('val')) {
+          align = switch (child.getAttribute('w:val')) {
             'center' => DocAlign.center,
             'right' || 'end' => DocAlign.right,
             'both' || 'distribute' => DocAlign.justify,
             _ => DocAlign.left,
           };
         case 'spacing':
-          before = _parseTwips(child.getAttribute('before'));
-          after = _parseTwips(child.getAttribute('after'));
-          final rawLine = child.getAttribute('line');
+          before = _parseTwips(child.getAttribute('w:before'));
+          after = _parseTwips(child.getAttribute('w:after'));
+          final rawLine = child.getAttribute('w:line');
           if (rawLine != null) {
             final v = int.tryParse(rawLine);
             if (v != null) {
-              line = child.getAttribute('lineRule') == 'exact'
+              line = child.getAttribute('w:lineRule') == 'exact'
                   ? v / 20
                   : v / 240;
             }
           }
         case 'ind':
-          left = _parseTwips(child.getAttribute('left') ??
-              child.getAttribute('start'));
-          right = _parseTwips(child.getAttribute('right') ??
-              child.getAttribute('end'));
-          final hanging = child.getAttribute('hanging');
+          left = _parseTwips(child.getAttribute('w:left') ??
+              child.getAttribute('w:start'));
+          right = _parseTwips(child.getAttribute('w:right') ??
+              child.getAttribute('w:end'));
+          final hanging = child.getAttribute('w:hanging');
           firstLine = hanging != null
               ? -(_parseTwips(hanging) ?? 0)
-              : _parseTwips(child.getAttribute('firstLine'));
+              : _parseTwips(child.getAttribute('w:firstLine'));
         case 'numPr':
           level = int.tryParse(
-                child.findElements('w:ilvl').firstOrNull?.getAttribute('val') ?? '',
+                child.findElements('w:ilvl').firstOrNull?.getAttribute('w:val') ?? '',
               ) ??
               0;
           final numId =
-              child.findElements('w:numId').firstOrNull?.getAttribute('val');
+              child.findElements('w:numId').firstOrNull?.getAttribute('w:val');
           list = numbering[numId] ?? DocList.bullet;
       }
     }
@@ -502,17 +522,17 @@ class DocxCodec {
     for (final child in element.childElements) {
       switch (child.name.local) {
         case 'pgSz':
-          width = _emuToPoints(child.getAttribute('w'));
-          height = _emuToPoints(child.getAttribute('h'));
+          width = _emuToPoints(child.getAttribute('w:w'));
+          height = _emuToPoints(child.getAttribute('w:h'));
         case 'pgMar':
-          top = _twipsToPoints(child.getAttribute('top'));
-          bottom = _twipsToPoints(child.getAttribute('bottom'));
-          left = _twipsToPoints(child.getAttribute('left') ??
-              child.getAttribute('start'));
-          right = _twipsToPoints(child.getAttribute('right') ??
-              child.getAttribute('end'));
+          top = _twipsToPoints(child.getAttribute('w:top'));
+          bottom = _twipsToPoints(child.getAttribute('w:bottom'));
+          left = _twipsToPoints(child.getAttribute('w:left') ??
+              child.getAttribute('w:start'));
+          right = _twipsToPoints(child.getAttribute('w:right') ??
+              child.getAttribute('w:end'));
         case 'cols':
-          columns = int.tryParse(child.getAttribute('num') ?? '') ?? 1;
+          columns = int.tryParse(child.getAttribute('w:num') ?? '') ?? 1;
       }
     }
     return DocPageSetup(
@@ -532,21 +552,21 @@ class DocxCodec {
       final xml = XmlDocument.parse(utf8.decode(bytes, allowMalformed: true));
       final abstractFormats = <String, DocList>{};
       for (final abstractNum in xml.findAllElements('w:abstractNum')) {
-        final id = abstractNum.getAttribute('w:abstractNumId');
+        final id = abstractNum.getAttribute('w:w:abstractNumId');
         if (id == null) continue;
         final level = abstractNum.findElements('w:lvl').firstOrNull;
         final fmt = level?.findElements('w:numFmt').firstOrNull
-                ?.getAttribute('val') ??
+                ?.getAttribute('w:val') ??
             'bullet';
         abstractFormats[id] =
             fmt == 'bullet' ? DocList.bullet : DocList.ordered;
       }
       for (final num in xml.findAllElements('w:num')) {
-        final numId = num.getAttribute('w:numId');
+        final numId = num.getAttribute('w:w:numId');
         final abstractId = num
             .findElements('w:abstractNumId')
             .firstOrNull
-            ?.getAttribute('val')
+            ?.getAttribute('w:val')
             ;
         if (numId != null && abstractId != null) {
           out[numId] = abstractFormats[abstractId] ?? DocList.bullet;
@@ -561,14 +581,14 @@ class DocxCodec {
     try {
       final xml = XmlDocument.parse(utf8.decode(bytes, allowMalformed: true));
       for (final style in xml.findAllElements('w:style')) {
-        final id = style.getAttribute('w:styleId');
+        final id = style.getAttribute('w:w:styleId');
         if (id == null) continue;
         final outline = style
             .findElements('w:pPr')
             .firstOrNull
             ?.findElements('w:outlineLvl')
             .firstOrNull
-            ?.getAttribute('val')
+            ?.getAttribute('w:val')
             ;
         if (outline != null) {
           out[id] = int.tryParse(outline) ?? 0;

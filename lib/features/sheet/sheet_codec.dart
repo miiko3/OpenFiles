@@ -1061,6 +1061,63 @@ if (divisor == 0) {
     return null;
   }
 }
+class _StyleEntry {
+  _StyleEntry({
+    required this.fontFamily,
+    required this.fontSize,
+    required this.bold,
+    required this.italic,
+    required this.underline,
+    required this.fontColor,
+    required this.fillColor,
+    required this.align,
+    required this.valign,
+    required this.wrap,
+    required this.format,
+  });
+
+  static int? _colorOrNull(String raw) {
+    if (raw.length < 8) return null;
+    final value = int.tryParse(raw, radix: 16);
+    return value == null || value == 0 ? null : value;
+  }
+
+  factory _StyleEntry.parse(String key) {
+    final p = key.split('|');
+    return _StyleEntry(
+      fontFamily: p[0],
+      fontSize: double.tryParse(p[1]) ?? 11,
+      bold: p[2] == 'true',
+      italic: p[3] == 'true',
+      underline: p[4] == 'true',
+      fontColor: _colorOrNull(p[5]),
+      fillColor: _colorOrNull(p[6]),
+      align: p[7],
+      valign: p[8],
+      wrap: p[9] == 'true',
+      format: p[10],
+    );
+  }
+
+  final String fontFamily;
+  final double fontSize;
+  final bool bold;
+  final bool italic;
+  final bool underline;
+  final int? fontColor;
+  final int? fillColor;
+  final String align;
+  final String valign;
+  final bool wrap;
+  final String format;
+
+  String get fontKey =>
+      '$fontFamily|${fontSize.toStringAsFixed(2)}|$bold|$italic|$underline|'
+      '${(fontColor ?? 0).toRadixString(16).padLeft(8, '0')}';
+
+  String get fillHex =>
+      (fillColor ?? 0).toRadixString(16).padLeft(8, '0').substring(2);
+}
 class ErrorValue {
   const ErrorValue(this.code);
   final String code;
@@ -1532,13 +1589,14 @@ class XlsxCodec {
     archive.addFile(
       _bytes('xl/_rels/workbook.xml.rels', _workbookRels(wb)),
     );
-    archive.addFile(_bytes('xl/styles.xml', _stylesXml()));
+    final styleIndex = _collectStyles(wb);
+    archive.addFile(_bytes('xl/styles.xml', _stylesXml(styleIndex)));
     archive.addFile(_bytes('xl/sharedStrings.xml', _sharedStringsXml(strings)));
     for (var i = 0; i < wb.sheets.length; i++) {
       archive.addFile(
         _bytes(
           'xl/worksheets/sheet${i + 1}.xml',
-          _sheetXml(wb.sheets[i], stringIndex),
+          _sheetXml(wb.sheets[i], stringIndex, styleIndex),
         ),
       );
     }
@@ -1647,58 +1705,198 @@ class XlsxCodec {
     );
     return b.buildDocument().toXmlString();
   }
-  static String _stylesXml() {
+  static Map<String, int> _collectStyles(Workbook wb) {
+    final map = <String, int>{};
+    for (final sheet in wb.sheets) {
+      for (final row in sheet.cells.values) {
+        for (final cell in row.values) {
+          map.putIfAbsent(_styleKey(cell.style), () => map.length);
+        }
+      }
+    }
+    return map;
+  }
+
+  static String _styleKey(CellStyle style) {
+    final font = (style.fontColor ?? 0).toRadixString(16).padLeft(8, '0');
+    final fill = (style.fillColor ?? 0).toRadixString(16).padLeft(8, '0');
+    return '${style.fontFamily}|'
+        '${style.fontSize}|'
+        '${style.bold}|'
+        '${style.italic}|'
+        '${style.underline}|'
+        '$font|'
+        '$fill|'
+        '${style.align}|'
+        '${style.valign}|'
+        '${style.wrap}|'
+        '${style.numberFormat}';
+  }
+
+  static String _stylesXml(Map<String, int> styleIndex) {
+    final entries = <_StyleEntry>[];
+    for (final key in styleIndex.keys) {
+      entries.add(_StyleEntry.parse(key));
+    }
+    final fontKeys = <String>[];
+    final fillKeys = <String>[];
+    for (final entry in entries) {
+      if (!fontKeys.contains(entry.fontKey)) fontKeys.add(entry.fontKey);
+      if (entry.fillColor != null && !fillKeys.contains(entry.fillHex)) {
+        fillKeys.add(entry.fillHex);
+      }
+    }
+
+    const builtin = {
+      'General',
+      'Integer',
+      'Number',
+      'Currency',
+      'Percent',
+      'Date',
+      'Time',
+      'Scientific',
+    };
+    final customFormats = <String>[];
+    for (final entry in entries) {
+      if (!builtin.contains(entry.format) &&
+          !customFormats.contains(entry.format)) {
+        customFormats.add(entry.format);
+      }
+    }
+
     final b = XmlBuilder();
     b.processing('xml', 'version="1.0" encoding="UTF-8" standalone="yes"');
     b.element(
       'styleSheet',
-      attributes: {'xmlns': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'},
+      attributes: {'xmlns': _nsMain},
       nest: () {
+        if (customFormats.isNotEmpty) {
+          b.element(
+            'numFmts',
+            attributes: {'count': '${customFormats.length}'},
+            nest: () {
+              for (var i = 0; i < customFormats.length; i++) {
+                b.element('numFmt', attributes: {
+                  'numFmtId': '${164 + i}',
+                  'formatCode': customFormats[i],
+                });
+              }
+            },
+          );
+        }
+
         b.element(
           'fonts',
-          attributes: {'count': '1'},
-          nest: () => b.element('font', nest: () {
-            b.element('sz', attributes: {'val': '11'});
-            b.element('name', attributes: {'val': 'Calibri'});
-          }),
-        );
-        b.element(
-          'fills',
-          attributes: {'count': '2'},
+          attributes: {'count': '${fontKeys.length}'},
           nest: () {
-            b.element('fill', nest: () => b.element('patternFill', attributes: {'patternType': 'none'}));
-            b.element('fill', nest: () => b.element('patternFill', attributes: {'patternType': 'gray125'}));
+            for (final key in fontKeys) {
+              final p = key.split('|');
+              b.element('font', nest: () {
+                b.element('name', attributes: {
+                  'val': p[0].isEmpty ? 'Calibri' : p[0],
+                });
+                if (p[2] == 'true') b.element('b');
+                if (p[3] == 'true') b.element('i');
+                if (p[4] == 'true') b.element('u');
+                if (p[5] != '00000000') {
+                  b.element('color', attributes: {
+                    'rgb': p[5].substring(2).toUpperCase(),
+                  });
+                }
+                b.element('sz', attributes: {'val': p[1]});
+              });
+            }
           },
         );
+
         b.element(
-          'borders',
-          attributes: {'count': '1'},
-          nest: () => b.element('border', nest: () {
-            b.element('left');
-            b.element('right');
-            b.element('top');
-            b.element('bottom');
-            b.element('diagonal');
-          }),
+          'fills',
+          attributes: {'count': '${fillKeys.length + 2}'},
+          nest: () {
+            b.element('fill', nest: () => b.element(
+                  'patternFill',
+                  attributes: {'patternType': 'none'},
+                ));
+            b.element('fill', nest: () => b.element(
+                  'patternFill',
+                  attributes: {'patternType': 'gray125'},
+                ));
+            for (final hex in fillKeys) {
+              b.element('fill', nest: () {
+                b.element('patternFill', attributes: {
+                  'patternType': 'solid',
+                });
+                b.element('fgColor', attributes: {'rgb': hex.toUpperCase()});
+              });
+            }
+          },
         );
-        b.element(
-          'cellStyleXfs',
-          attributes: {'count': '1'},
-          nest: () => b.element('xf', attributes: {'numFmtId': '0', 'fontId': '0', 'fillId': '0', 'borderId': '0'}),
-        );
+
+        b.element('borders', attributes: {'count': '1'}, nest: () => b.element(
+              'border',
+              nest: () {
+                b.element('left');
+                b.element('right');
+                b.element('top');
+                b.element('bottom');
+                b.element('diagonal');
+              },
+            ));
+
+        b.element('cellStyleXfs', attributes: {'count': '1'}, nest: () => b.element(
+              'xf',
+              attributes: {
+                'numFmtId': '0',
+                'fontId': '0',
+                'fillId': '0',
+                'borderId': '0',
+              },
+            ));
+
         b.element(
           'cellXfs',
-          attributes: {'count': '1'},
-          nest: () => b.element(
-            'xf',
-            attributes: {'numFmtId': '0', 'fontId': '0', 'fillId': '0', 'borderId': '0', 'xfId': '0'},
-          ),
+          attributes: {'count': '${entries.length}'},
+          nest: () {
+            for (final entry in entries) {
+              final numFmt = builtin.contains(entry.format)
+                  ? 0
+                  : 164 + customFormats.indexOf(entry.format);
+              final fontId = fontKeys.indexOf(entry.fontKey);
+              final fillId =
+                  entry.fillColor == null ? 0 : fillKeys.indexOf(entry.fillHex) + 2;
+              b.element(
+                'xf',
+                attributes: {
+                  'numFmtId': '$numFmt',
+                  'fontId': '$fontId',
+                  'fillId': '$fillId',
+                  'borderId': '0',
+                  'xfId': '0',
+                  'applyFont': '1',
+                  'applyFill': '1',
+                  'applyNumberFormat': '1',
+                  'applyAlignment': '1',
+                },
+                nest: () => b.element('alignment', attributes: {
+                  'horizontal': entry.align,
+                  'vertical': entry.valign,
+                  'wrapText': entry.wrap ? '1' : '0',
+                }),
+              );
+            }
+          },
         );
       },
     );
     return b.buildDocument().toXmlString();
   }
-  static String _sheetXml(Sheet sheet, Map<String, int> stringIndex) {
+
+  static String _sheetXml(
+    Sheet sheet,
+    Map<String, int> stringIndex,
+    Map<String, int> styleIndex,
+  ) {
     final b = XmlBuilder();
     final maxRow = sheet.maxRow;
     final maxCol = sheet.maxCol;
@@ -1733,7 +1931,7 @@ class XlsxCodec {
               for (var c = 0; c < maxCol; c++) {
                 final cell = row[c];
                 if (cell == null) continue;
-                _writeCell(b, r, c, cell, stringIndex);
+                _writeCell(b, r, c, cell, stringIndex, styleIndex);
               }
             });
           }
@@ -1748,7 +1946,9 @@ class XlsxCodec {
     int col,
     Cell cell,
     Map<String, int> stringIndex,
+    Map<String, int> styleIndex,
   ) {
+    final style = styleIndex[_styleKey(cell.style)];
     final ref = cellRef(row, col);
     String? type;
     String? value;
@@ -1770,6 +1970,7 @@ class XlsxCodec {
     }
     b.element('c', attributes: {
       'r': ref,
+      if (style != null) 's': '$style',
       if (type != null) 't': type,
     }, nest: () {
       if (cell.formula != null) {
@@ -1784,6 +1985,9 @@ class XlsxCodec {
     }
     return value.toString();
   }
+  static const _nsMain =
+      'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+
   static const _nsR =
       'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
 }

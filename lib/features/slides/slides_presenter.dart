@@ -18,7 +18,6 @@ class SlidesPresenter extends StatefulWidget {
 class _SlidesPresenterState extends State<SlidesPresenter> {
   late int _index = widget.startIndex;
   final Stopwatch _clock = Stopwatch()..start();
-  bool _showOverlay = true;
   bool _blackScreen = false;
   bool _whiteScreen = false;
   bool _chrome = true;
@@ -249,7 +248,7 @@ class _SlidesPresenterState extends State<SlidesPresenter> {
       top: AppSpace.lg,
       child: IgnorePointer(
         child: Opacity(
-          opacity: _showOverlay ? 0.94 : 0,
+          opacity: 0.94,
           child: Container(
             width: 210,
             padding: const EdgeInsets.all(AppSpace.md),

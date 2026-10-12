@@ -34,7 +34,6 @@ class _PdfViewerState extends State<PdfViewer> {
   bool _loading = true;
   String? _error;
   pdfrx.PdfViewerController? _controller;
-  int _page = 1;
   int _pageCount = 1;
   int _activePage = 1;
   PdfTool _tool = PdfTool.navigate;

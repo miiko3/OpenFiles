@@ -30,7 +30,6 @@ class _BrowserScreenState extends State<BrowserScreen> {
   String _query = '';
   bool _searching = false;
   Timer? _searchDebounce;
-  String? _pendingOpen;
   FsLocation get _here =>
       _stack.isEmpty ? (widget.startLocation ?? const FsLocation.local('/')) : _stack.last;
   @override
@@ -65,9 +64,11 @@ class _BrowserScreenState extends State<BrowserScreen> {
   Future<TreeRoot?> _showRootIfNeeded() async {
     final pending = _consumePendingLocation();
     if (pending != null) return pending;
-    if (widget.startLocation != null) {
+    final start = widget.startLocation;
+    if (start != null) {
       return TreeRoot(
-        treeUri: widget.startLocation!.treeUri ?? '',
+        treeUri: start.treeUri ?? '',
+        docId: start.docId ?? '',
         label: 'Хранилище',
       );
     }
@@ -81,14 +82,17 @@ class _BrowserScreenState extends State<BrowserScreen> {
     final pending = BrowserRoots.takePending();
     if (pending == null) return null;
     if (pending.isSaf) {
-      return TreeRoot(treeUri: pending.treeUri!, label: 'Хранилище');
+      return TreeRoot(
+        treeUri: pending.treeUri!,
+        docId: pending.docId!,
+        label: 'Хранилище',
+      );
     }
     return TreeRoot(treeUri: '', label: pending.path ?? 'Storage');
   }
   void _onInboxFiles(List<Map<String, dynamic>> files) {
     if (files.isEmpty) return;
     final name = files.first['name'] as String? ?? 'file';
-    _pendingOpen = name;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final mime = files.first['mime'] as String? ?? '';
       final node = FsNode(
@@ -145,7 +149,6 @@ class _BrowserScreenState extends State<BrowserScreen> {
     });
   }
   List<FsNode>? _cache;
-  List<FsNode> _cachedItems = const [];
   List<FsNode> get _visible {
     final settings = context.read<AppSettings>();
     final stamp = Object.hashAll([
