@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -109,18 +110,28 @@ class _SheetEditorState extends State<SheetEditor> {
   int _firstCol = 0;
   int _lastCol = 0;
   double _windowWidth = 0;
+  double _stretch = 0;
   void _recalcViewport(double width, double height) {
+    final total = math.max(1, _totalCols);
     var end = 1;
     var visible = _colWidth(0);
-    while (end < _totalCols) {
+    while (end < total) {
       final next = visible + _colWidth(end);
       if (next > width) break;
       visible = next;
       end++;
     }
+    final last = end.clamp(1, total);
+    final extra = visible < width ? width - visible : 0.0;
     _firstCol = 0;
-    _lastCol = end.clamp(1, _totalCols);
-    _windowWidth = visible;
+    _lastCol = last;
+    _stretch = extra;
+    _windowWidth = visible + extra;
+  }
+
+  double _gridWidth(int col) {
+    if (col == _lastCol - 1) return _colWidth(col) + _stretch;
+    return _colWidth(col);
   }
   String _display(int row, int col) {
     final cell = _sheet.cellAt(row, col);
@@ -807,7 +818,7 @@ class _SheetEditorState extends State<SheetEditor> {
                           children: [
                             for (var col = _firstCol; col < _lastCol; col++)
                               SizedBox(
-                                width: _colWidth(col),
+                                width: _gridWidth(col),
                                 child: _colHeader(col, c),
                               ),
                           ],
@@ -821,14 +832,11 @@ class _SheetEditorState extends State<SheetEditor> {
                           itemCount: _totalRows,
                           itemExtent: rowHeight,
                           itemBuilder: (context, r) {
-                            if (_lastCol <= _firstCol) {
-                              _recalcViewport(600, 400);
-                            }
                             return Row(
                               children: [
                                 for (var col = _firstCol; col < _lastCol; col++)
                                   SizedBox(
-                                    width: _colWidth(col),
+                                    width: _gridWidth(col),
                                     child: _cell(r, col, c),
                                   ),
                               ],
@@ -965,7 +973,7 @@ class _SheetEditorState extends State<SheetEditor> {
   Widget _cell(int row, int col, AppColors c) {
     if (row > _sheet.maxRow + 1 && col > _sheet.maxCol) {
       return Container(
-        width: _colWidth(col),
+        width: _gridWidth(col),
         decoration: BoxDecoration(
           border: Border(
             right: BorderSide(color: c.border.withValues(alpha: 0.5)),

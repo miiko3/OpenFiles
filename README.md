@@ -43,7 +43,9 @@
 
 **Аннотирует PDF** — выделение, подчёркивание, зачёркивание, заметки и рисование поверх страницы.
 
-**Играет медиа** — видео и аудио с плеером, просмотр изображений с зумом, разбор архивов с предпросмотром содержимого.
+**Показывает презентации во весь экран** — слайд занимает весь дисплей в редакторе, а полноэкранный показ запускается одним нажатием.
+
+**Открывает изображения** — просмотр с зумом, разбор архивов с предпросмотром содержимого.
 
 <p align="center">
   <img src="docs/screenshots/settings-dark.png" width="200" alt="Настройки">
@@ -92,8 +94,6 @@ docs/demo/
 | Данные | `csv` `tsv` |
 | Код | `json` `dart` `js` `jsx` `ts` `tsx` `py` `rb` `go` `rs` `java` `kt` `c` `h` `cpp` `cs` `swift` `php` `sh` `bash` `ps1` `bat` `sql` `html` `css` `scss` `xml` `yaml` `toml` `ini` `gradle` `cmake` `lua` `vue` `svelte` |
 | Изображения | `png` `jpg` `jpeg` `gif` `webp` `bmp` `heic` `heif` `ico` `tif` `svg` `avif` |
-| Аудио | `mp3` `m4a` `aac` `ogg` `oga` `opus` `flac` `wav` `wma` `amr` `mid` `midi` |
-| Видео | `mp4` `mkv` `webm` `mov` `avi` `wmv` `flv` `3gp` `m4v` |
 | Архивы | `zip` `rar` `7z` `tar` `gz` `bz2` `xz` `zst` `apk` `iso` `jar` |
 | Электронные книги | `epub` `mobi` `azw` `azw3` `fb2` |
 | Шрифты | `ttf` `otf` `woff` `woff2` |
@@ -201,10 +201,10 @@ Requires Android 7.0 (API 24) or newer.
 
 ### What it does
 
-- **Opens any file** — Word, Excel, PDF, images, audio, video, archives, fonts and e-books. Unknown formats open in a hex viewer with byte search instead of throwing an error.
+- **Opens any file** — Word, Excel, PDF, images, archives, fonts and e-books. Unknown formats open in a hex viewer with byte search instead of throwing an error.
 - **Edits documents** — `.docx`, `.xlsx` and `.pptx` are read and written by built-in OOXML codecs. The original file is overwritten, no copy is created.
 - **Annotates PDFs** — highlight, underline, strikethrough, notes and freehand drawing.
-- **Plays media** — video and audio with a player, images with zoom, archives with a content preview.
+- **Shows presentations full screen** — the slide takes the whole display in the editor, and a fullscreen presenter is one tap away.
 
 ### Granting access
 

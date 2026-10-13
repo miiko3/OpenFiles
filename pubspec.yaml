@@ -1,7 +1,7 @@
 name: openfiles
 description: Android file manager and editor that opens and edits every file type in place.
 publish_to: 'none'
-version: 1.0.6+7
+version: 1.0.7+8
 
 environment:
   sdk: ^3.13.5
@@ -27,8 +27,6 @@ dependencies:
   flutter_markdown: ^0.7.7+1
   flutter_highlight: ^0.7.0
   file_picker: ^13.1.0
-  video_player: ^2.14.1
-  just_audio: ^0.10.6
   photo_view: ^0.15.0
   share_plus: ^13.3.1
   path: ^1.9.1

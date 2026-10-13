@@ -1,4 +1,4 @@
-import 'package:flutter/widgets.dart';
+﻿import 'package:flutter/widgets.dart';
 enum AppLanguage { ru, en }
 class L10n {
   L10n._();
@@ -120,7 +120,7 @@ const Map<String, String> _ru = {
   'settings.addLocationHint': 'Выдать приложению доступ к папке на устройстве',
   'settings.clearRecents': 'Очистить недавние файлы',
   'settings.about': 'О приложении',
-  'settings.version': 'Версия 1.0.6',
+  'settings.version': 'Версия 1.0.7',
   'settings.author': 'Автор',
   'settings.language': 'Язык',
   'settings.minutes1': '1 мин',
@@ -254,10 +254,6 @@ const Map<String, String> _ru = {
   'hex.notFound': 'Не найдено',
   'hex.rowCopied': 'Строка скопирована',
   'image.zoomHint': 'Масштабируйте двумя пальцами',
-  'audio.back10': 'Назад 10 секунд',
-  'audio.forward30': 'Вперёд 30 секунд',
-  'media.play': 'Играть',
-  'media.pause': 'Пауза',
   'help.title': 'Инструкция',
   'help.intro':
       'OpenFiles открывает и редактирует файлы прямо в памяти устройства. Приложение работает полностью офлайн.',
@@ -269,7 +265,7 @@ const Map<String, String> _ru = {
       'Список и сетка, поиск по текущей папке, сортировка, показ скрытых файлов. Долгое нажатие открывает меню: переименовать, удалить, свойства, поделиться.',
   'help.formatsTitle': 'Поддерживаемые форматы',
   'help.formatsText':
-      'Word: docx, docm, dotx, odt, rtf, doc. Таблицы: xlsx, xlsm, xltx, ods, xls, numbers. Презентации: pptx, pptm, potx, odp, ppt. PDF с аннотациями. Текст: txt, log, md, markdown. Данные: csv, tsv. Код: json, dart, js, ts, py, kt, java, c, cpp, html, css, xml, yaml, sh. Медиа: png, jpg, webp, gif, heic, mp3, m4a, flac, mp4, mkv, webm. Архивы: zip, rar, 7z, tar. Любой другой файл открывается в hex-просмотре.',
+      'Word: docx, docm, dotx, odt, rtf, doc. Таблицы: xlsx, xlsm, xltx, ods, xls, numbers. Презентации: pptx, pptm, potx, odp, ppt. PDF с аннотациями. Текст: txt, log, md, markdown. Данные: csv, tsv. Код: json, dart, js, ts, py, kt, java, c, cpp, html, css, xml, yaml, sh. Изображения: png, jpg, webp, gif, heic. Архивы: zip, rar, 7z, tar. Любой другой файл открывается в hex-просмотре.',
   'help.editingTitle': 'Редактирование',
   'help.editingText':
       'Документы Word и Excel перезаписываются поверх исходного файла — новый файл не создаётся. Панель снизу меняет выделенный текст или ячейку. Правки отменяются кнопкой «Отменить».',
@@ -390,7 +386,7 @@ const Map<String, String> _en = {
   'settings.addLocationHint': 'Grant the app access to a folder on this device',
   'settings.clearRecents': 'Clear recent files',
   'settings.about': 'About',
-  'settings.version': 'Version 1.0.6',
+  'settings.version': 'Version 1.0.7',
   'settings.author': 'Author',
   'settings.language': 'Language',
   'settings.minutes1': '1 min',
@@ -524,10 +520,6 @@ const Map<String, String> _en = {
   'hex.notFound': 'Not found',
   'hex.rowCopied': 'Row copied',
   'image.zoomHint': 'Pinch to zoom',
-  'audio.back10': 'Back 10 seconds',
-  'audio.forward30': 'Forward 30 seconds',
-  'media.play': 'Play',
-  'media.pause': 'Pause',
   'help.title': 'Instructions',
   'help.intro':
       'OpenFiles opens and edits files straight in device storage. The app works fully offline.',
@@ -539,7 +531,7 @@ const Map<String, String> _en = {
       'List and grid views, search within the current folder, sorting, hidden files. Long press opens a menu: rename, delete, properties, share.',
   'help.formatsTitle': 'Supported formats',
   'help.formatsText':
-      'Word: docx, docm, dotx, odt, rtf, doc. Sheets: xlsx, xlsm, xltx, ods, xls, numbers. Slides: pptx, pptm, potx, odp, ppt. PDF with annotations. Text: txt, log, md, markdown. Data: csv, tsv. Code: json, dart, js, ts, py, kt, java, c, cpp, html, css, xml, yaml, sh. Media: png, jpg, webp, gif, heic, mp3, m4a, flac, mp4, mkv, webm. Archives: zip, rar, 7z, tar. Any other file opens in the hex viewer.',
+      'Word: docx, docm, dotx, odt, rtf, doc. Sheets: xlsx, xlsm, xltx, ods, xls, numbers. Slides: pptx, pptm, potx, odp, ppt. PDF with annotations. Text: txt, log, md, markdown. Data: csv, tsv. Code: json, dart, js, ts, py, kt, java, c, cpp, html, css, xml, yaml, sh. Images: png, jpg, webp, gif, heic. Archives: zip, rar, 7z, tar. Any other file opens in the hex viewer.',
   'help.editingTitle': 'Editing',
   'help.editingText':
       'Word and Excel documents are written back over the original file, no copy is created. The bottom bar formats the selected text or cell. Changes are undone with the Undo button.',

@@ -695,7 +695,9 @@ class _BrowserScreenState extends State<BrowserScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
+              width: 54,
               height: 54,
+              alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: tint.withValues(alpha: 0.14),
                 borderRadius: AppRadius.md,
@@ -796,9 +798,11 @@ class _BrowserScreenState extends State<BrowserScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
             ListTile(
               leading: const Icon(Icons.drive_file_rename_outline_rounded),
               title: const Text('Переименовать'),
@@ -834,7 +838,8 @@ class _BrowserScreenState extends State<BrowserScreen> {
                 },
               ),
             const SizedBox(height: AppSpace.sm),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -28,11 +28,23 @@ class _SlidesEditorState extends State<SlidesEditor> {
   int _index = 0;
   String? _selectedId;
   bool _showNotes = false;
+  bool _showThumbs = false;
+  bool _showProps = false;
+  bool _panesInit = false;
   double _zoom = 1.0;
   Size _viewport = const Size(360, 240);
   final Map<String, ui.Image> _images = {};
   final Map<String, TextEditingController> _notesControllers = {};
   Slide get _slide => _deck.slides[_index.clamp(0, _deck.slides.length - 1)];
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_panesInit) return;
+    _panesInit = true;
+    final wide = MediaQuery.of(context).size.width >= 600;
+    _showThumbs = wide;
+    _showProps = wide;
+  }
   @override
   void initState() {
     super.initState();
@@ -457,8 +469,10 @@ class _SlidesEditorState extends State<SlidesEditor> {
         Expanded(
           child: Row(
             children: [
-              _thumbnailPane(c),
-              VerticalDivider(width: 1, color: c.border),
+              if (_showThumbs) ...[
+                _thumbnailPane(c),
+                VerticalDivider(width: 1, color: c.border),
+              ],
               Expanded(
                 child: Column(
                   children: [
@@ -467,8 +481,10 @@ class _SlidesEditorState extends State<SlidesEditor> {
                   ],
                 ),
               ),
-              VerticalDivider(width: 1, color: c.border),
-              _propertyPane(c),
+              if (_showProps) ...[
+                VerticalDivider(width: 1, color: c.border),
+                _propertyPane(c),
+              ],
             ],
           ),
         ),
@@ -526,6 +542,22 @@ class _SlidesEditorState extends State<SlidesEditor> {
             iconSize: 19,
             tooltip: 'Present',
             onPressed: _present,
+          ),
+          RoundIconButton(
+            icon: Icons.grid_view_rounded,
+            size: 34,
+            iconSize: 16,
+            tooltip: _showThumbs ? 'Hide slides' : 'Show slides',
+            active: _showThumbs,
+            onPressed: () => setState(() => _showThumbs = !_showThumbs),
+          ),
+          RoundIconButton(
+            icon: Icons.tune_rounded,
+            size: 34,
+            iconSize: 17,
+            tooltip: _showProps ? 'Hide properties' : 'Show properties',
+            active: _showProps,
+            onPressed: () => setState(() => _showProps = !_showProps),
           ),
           RoundIconButton(
             icon: Icons.picture_as_pdf_outlined,
@@ -765,7 +797,7 @@ class _SlidesEditorState extends State<SlidesEditor> {
   Widget _canvasPane(AppColors c) {
     return LayoutBuilder(
       builder: (context, box) {
-        final available = Size(box.maxWidth - 32, box.maxHeight - 32);
+        final available = Size(box.maxWidth - 8, box.maxHeight - 8);
         final ratio = _deck.widthPt / _deck.heightPt;
         var width = available.width;
         var height = width / ratio;

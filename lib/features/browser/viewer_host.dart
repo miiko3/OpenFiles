@@ -10,7 +10,6 @@ import '../word/word_editor.dart';
 import 'viewers/archive_viewer.dart';
 import 'viewers/hex_viewer.dart';
 import 'viewers/image_viewer.dart';
-import 'viewers/media_viewer.dart';
 import 'viewers/pdf_viewer.dart';
 import 'viewers/csv_editor.dart';
 import 'viewers/text_editor.dart';
@@ -43,9 +42,6 @@ class ViewerHost extends StatelessWidget {
         screen = CsvEditor(node: node, readOnly: !allowEdit);
       case FileKind.image:
         screen = ImageViewer(node: node);
-      case FileKind.audio:
-      case FileKind.video:
-        screen = MediaViewer(node: node, video: kind == FileKind.video);
       case FileKind.archive:
         screen = ArchiveViewer(node: node);
       default:

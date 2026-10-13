@@ -93,7 +93,7 @@ class _SlidesPresenterState extends State<SlidesPresenter> {
                           key: ValueKey(_blackScreen ? 'b' : 'w'),
                           color: _blackScreen ? Colors.black : Colors.white,
                         )
-                      : Center(
+                      : SizedBox.expand(
                           key: ValueKey(_index),
                           child: _slideWidget(),
                         ),
@@ -138,28 +138,35 @@ class _SlidesPresenterState extends State<SlidesPresenter> {
     final ratio = widget.deck.widthPt / widget.deck.heightPt;
     return LayoutBuilder(
       builder: (context, box) {
-        var width = box.maxWidth;
+        var width = box.maxWidth - 16;
         var height = width / ratio;
-        if (height > box.maxHeight) {
-          height = box.maxHeight;
+        if (height > box.maxHeight - 16) {
+          height = box.maxHeight - 16;
           width = height * ratio;
         }
+        final slackX = math.max(0.0, box.maxWidth - width);
+        final slackY = math.max(0.0, box.maxHeight - height);
         return AnimatedSwitcher(
           duration: Duration(
             milliseconds: (_slide.transitionDuration * 1000).round().clamp(80, 2400),
           ),
           transitionBuilder: (child, animation) => _transition(child, animation),
-          child: Container(
-            key: ValueKey(_index),
-            width: width,
-            height: height,
-            color: Colors.white,
-            child: CustomPaint(
-              painter: SlidePainter(
-                slide: _slide,
-                deckWidth: widget.deck.widthPt,
-                deckHeight: widget.deck.heightPt,
-                images: const {},
+          child: Center(
+            child: Transform.translate(
+              key: ValueKey(_index),
+              offset: Offset(slackX * 0.12, slackY * 0.18),
+              child: Container(
+                width: width,
+                height: height,
+                color: Colors.white,
+                child: CustomPaint(
+                  painter: SlidePainter(
+                    slide: _slide,
+                    deckWidth: widget.deck.widthPt,
+                    deckHeight: widget.deck.heightPt,
+                    images: const {},
+                  ),
+                ),
               ),
             ),
           ),
@@ -182,13 +189,7 @@ class _SlidesPresenterState extends State<SlidesPresenter> {
           child: child,
         );
       case ppt.SlideTransition.wipe:
-        return ClipRect(
-          child: Align(
-            alignment: Alignment.centerLeft,
-            widthFactor: animation.value,
-            child: child,
-          ),
-        );
+        return _reveal(animation, child, fromLeft: true);
       case ppt.SlideTransition.cover:
         return SlideTransition(
           position: Tween<Offset>(
@@ -199,13 +200,7 @@ class _SlidesPresenterState extends State<SlidesPresenter> {
         );
       case ppt.SlideTransition.reveal:
       case ppt.SlideTransition.unCover:
-        return ClipRect(
-          child: Align(
-            alignment: Alignment.centerRight,
-            widthFactor: animation.value,
-            child: child,
-          ),
-        );
+        return _reveal(animation, child, fromLeft: false);
       case ppt.SlideTransition.zoom:
         return ScaleTransition(scale: animation, child: child);
       case ppt.SlideTransition.flip:
@@ -222,13 +217,7 @@ class _SlidesPresenterState extends State<SlidesPresenter> {
         );
       case ppt.SlideTransition.split:
       case ppt.SlideTransition.doors:
-        return ClipRect(
-          child: Align(
-            alignment: Alignment.centerLeft,
-            widthFactor: math.max(animation.value, 0.0001),
-            child: child,
-          ),
-        );
+        return _reveal(animation, child, bothSides: true);
       default:
         return FadeTransition(
           opacity: CurvedAnimation(
@@ -310,4 +299,47 @@ class _SlidesPresenterState extends State<SlidesPresenter> {
       ),
     );
   }
+}
+
+class _RevealClip extends CustomClipper<Rect> {
+  const _RevealClip({required this.t, this.fromLeft = false, this.bothSides = false});
+
+  final double t;
+  final bool fromLeft;
+  final bool bothSides;
+
+  @override
+  Rect getClip(Size size) {
+    final v = t.clamp(0.0, 1.0);
+    if (bothSides) {
+      final inset = size.width * (1 - v) / 2;
+      return Rect.fromLTRB(inset, 0, size.width - inset, size.height);
+    }
+    final w = size.width * v;
+    if (fromLeft) return Rect.fromLTWH(0, 0, w, size.height);
+    return Rect.fromLTWH(size.width - w, 0, w, size.height);
+  }
+
+  @override
+  bool shouldReclip(_RevealClip oldClipper) => oldClipper.t != t;
+}
+
+Widget _reveal(
+  Animation<double> animation,
+  Widget child, {
+  bool fromLeft = false,
+  bool bothSides = false,
+}) {
+  return AnimatedBuilder(
+    animation: animation,
+    builder: (context, inner) => ClipRect(
+      clipper: _RevealClip(
+        t: animation.value,
+        fromLeft: fromLeft,
+        bothSides: bothSides,
+      ),
+      child: inner,
+    ),
+    child: child,
+  );
 }

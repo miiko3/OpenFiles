@@ -226,7 +226,7 @@ ppt.SlideDeck _deck() {
     ..h = 70;
   final featuresBody = ppt.SlideText()
     ..text =
-        'Документы, таблицы, презентации, PDF, текст, код, архивы, фото, видео и музыка.'
+        'Документы, таблицы, презентации, PDF, текст, код, архивы и фото.'
     ..style = const ppt.SlideTextStyle(fontSize: 20);
   featuresBody
     ..id = 'f2'
