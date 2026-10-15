@@ -18,7 +18,8 @@ class BrowserScreen extends StatefulWidget {
   @override
   State<BrowserScreen> createState() => _BrowserScreenState();
 }
-class _BrowserScreenState extends State<BrowserScreen> {
+class _BrowserScreenState extends State<BrowserScreen>
+    with WidgetsBindingObserver {
   final _saf = SafService.instance;
   final _scroll = ScrollController();
   final _searchController = TextEditingController();
@@ -36,10 +37,18 @@ class _BrowserScreenState extends State<BrowserScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _bootstrap());
   }
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _current != null && mounted) {
+      _open(_here, push: false);
+    }
+  }
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _searchDebounce?.cancel();
     _scroll.dispose();
     _searchController.dispose();
@@ -721,34 +730,49 @@ class _BrowserScreenState extends State<BrowserScreen> {
       );
     }
     if (settings.gridView) {
-      return GridView.builder(
+      return _refreshable(
+        GridView.builder(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpace.md,
+            AppSpace.sm,
+            AppSpace.md,
+            120,
+          ),
+          controller: _scroll,
+          physics: const AlwaysScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: 150,
+            mainAxisSpacing: AppSpace.sm,
+            crossAxisSpacing: AppSpace.sm,
+            childAspectRatio: 0.88,
+          ),
+          itemCount: items.length,
+          itemBuilder: (context, i) => _gridTile(items[i]),
+        ),
+      );
+    }
+    return _refreshable(
+      ListView.builder(
         padding: const EdgeInsets.fromLTRB(
           AppSpace.md,
-          AppSpace.sm,
+          AppSpace.xs,
           AppSpace.md,
           120,
         ),
         controller: _scroll,
-        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: 150,
-          mainAxisSpacing: AppSpace.sm,
-          crossAxisSpacing: AppSpace.sm,
-          childAspectRatio: 0.88,
-        ),
+        physics: const AlwaysScrollableScrollPhysics(),
         itemCount: items.length,
-        itemBuilder: (context, i) => _gridTile(items[i]),
-      );
-    }
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpace.md,
-        AppSpace.xs,
-        AppSpace.md,
-        120,
+        itemBuilder: (context, i) => _listTile(items[i]),
       ),
-      controller: _scroll,
-      itemCount: items.length,
-      itemBuilder: (context, i) => _listTile(items[i]),
+    );
+  }
+
+  Widget _refreshable(Widget child) {
+    return RefreshIndicator(
+      onRefresh: () async {
+        await _open(_here, push: false);
+      },
+      child: child,
     );
   }
   Widget _gridTile(FsNode node) {
