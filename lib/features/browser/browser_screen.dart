@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -57,9 +57,77 @@ class _BrowserScreenState extends State<BrowserScreen> {
       return;
     }
     _currentRoot = root;
-    await _open(
-      FsLocation.saf(treeUri: root.treeUri, docId: root.docId),
-      push: false,
+    final target = FsLocation.saf(treeUri: root.treeUri, docId: root.docId);
+    final remembered = await _recallListing(target);
+    if (remembered != null && mounted) {
+      setState(() {
+        _current = target;
+        _entries = remembered;
+        _cache = null;
+        _entriesVersion++;
+        _loading = false;
+      });
+    }
+    await _open(target, push: false);
+  }
+
+  static const _listingCacheKey = 'lastListingV1';
+
+  Future<void> _rememberListing(FsLocation location, List<FsNode> items) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final encoded = jsonEncode({
+        'treeUri': location.treeUri,
+        'docId': location.docId,
+        'path': location.path,
+        'items': items.take(400).map(_nodeToJson).toList(),
+      });
+      await prefs.setString(_listingCacheKey, encoded);
+    } catch (_) {}
+  }
+
+  Future<List<FsNode>?> _recallListing(FsLocation location) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_listingCacheKey);
+      if (raw == null) return null;
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      if (decoded['treeUri'] != location.treeUri) return null;
+      final items = (decoded['items'] as List<dynamic>)
+          .map((e) => _nodeFromJson(e as Map<String, dynamic>, location))
+          .toList();
+      return items;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Map<String, dynamic> _nodeToJson(FsNode node) => {
+        'n': node.name,
+        'd': node.isDirectory,
+        'm': node.mime,
+        's': node.size,
+        't': node.modified.millisecondsSinceEpoch,
+        'w': node.canWrite,
+        'x': node.canDelete,
+        'r': node.canRename,
+      };
+
+  static FsNode _nodeFromJson(Map<String, dynamic> json, FsLocation parent) {
+    final name = json['n'] as String? ?? '';
+    return FsNode(
+      location: parent,
+      name: name,
+      isDirectory: json['d'] as bool? ?? false,
+      mime: json['m'] as String? ?? 'application/octet-stream',
+      size: (json['s'] as num?)?.toInt() ?? -1,
+      modified: DateTime.fromMillisecondsSinceEpoch(
+        (json['t'] as num?)?.toInt() ?? 0,
+      ),
+      canWrite: json['w'] as bool? ?? false,
+      canDelete: json['x'] as bool? ?? false,
+      canRename: json['r'] as bool? ?? false,
+      displayPath: '',
     );
   }
   Future<TreeRoot?> _showRootIfNeeded() async {
@@ -128,6 +196,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
         _entriesVersion++;
         _loading = false;
       });
+      unawaited(_rememberListing(location, items));
     } catch (e) {
       if (!mounted) return;
       setState(() {

@@ -12,6 +12,8 @@ class ImageViewer extends StatefulWidget {
   State<ImageViewer> createState() => _ImageViewerState();
 }
 class _ImageViewerState extends State<ImageViewer> {
+  void _goBack() => Navigator.of(context).pop();
+
   final _saf = SafService.instance;
   Uint8List? _bytes;
   bool _loading = true;
@@ -44,13 +46,28 @@ class _ImageViewerState extends State<ImageViewer> {
   @override
   Widget build(BuildContext context) {
     final c = context.c;
-    if (_loading) return const LoadingOverlay(visible: true, message: 'Opening image');
+    if (_loading) {
+      return FileLoadState(
+        onBack: _goBack,
+        child: const LoadingOverlay(
+          visible: true,
+          message: 'Opening image',
+        ),
+      );
+    }
     if (_error != null || _bytes == null) {
-      return EmptyState(
+      return FileLoadState(
+        onBack: _goBack,
+        child: EmptyState(
         icon: Icons.broken_image_outlined,
         title: 'Cannot open image',
         message: _error,
-        action: PillButton(label: 'Повторить', primary: true, onPressed: _load),
+          action: PillButton(
+            label: 'Повторить',
+            primary: true,
+            onPressed: _load,
+          ),
+        ),
       );
     }
     return Column(

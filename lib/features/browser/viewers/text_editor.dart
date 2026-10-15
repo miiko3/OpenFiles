@@ -23,6 +23,8 @@ class TextEditor extends StatefulWidget {
   State<TextEditor> createState() => _TextEditorState();
 }
 class _TextEditorState extends State<TextEditor> {
+  void _goBack() => Navigator.of(context).pop();
+
   final _controller = TextEditingController();
   final _scroll = ScrollController();
   final _findController = TextEditingController();
@@ -234,13 +236,28 @@ class _TextEditorState extends State<TextEditor> {
   }
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const LoadingOverlay(visible: true, message: 'Opening');
+    if (_loading) {
+      return FileLoadState(
+        onBack: _goBack,
+        child: const LoadingOverlay(
+          visible: true,
+          message: 'Opening',
+        ),
+      );
+    }
     if (_error != null) {
-      return EmptyState(
+      return FileLoadState(
+        onBack: _goBack,
+        child: EmptyState(
         icon: Icons.error_outline_rounded,
         title: 'Cannot open ${widget.node.name}',
         message: _error,
-        action: PillButton(label: 'Повторить', primary: true, onPressed: _load),
+          action: PillButton(
+            label: 'Повторить',
+            primary: true,
+            onPressed: _load,
+          ),
+        ),
       );
     }
     final c = context.c;

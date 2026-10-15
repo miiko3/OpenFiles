@@ -15,6 +15,7 @@ import 'package:openfiles/features/browser/viewers/csv_editor.dart';
 import 'package:openfiles/features/sheet/sheet_codec.dart';
 import 'package:openfiles/features/slides/pptx_codec.dart' as ppt;
 import 'package:openfiles/features/word/docx_codec.dart';
+import 'package:openfiles/features/word/odt_codec.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -609,6 +610,133 @@ void main() {
       expect(bytes[63], 63);
 
       dir.deleteSync(recursive: true);
+    });
+  });
+
+  group('end to end regression suite', () {
+    test('odt round trip keeps text, heading and character styles', () async {
+      final dir = Directory.systemTemp.createTempSync('of_odt');
+      final path = '${dir.path}/note.odt';
+
+      final doc = WordDocument(
+        blocks: [
+          DocTextBlock(
+            DocParagraph(
+              runs: const [DocRun('Отчёт за квартал', RunStyle(bold: true))],
+              style: const ParaStyle(headingLevel: 1, align: DocAlign.center),
+            ),
+          ),
+          DocTextBlock(
+            DocParagraph(
+              runs: const [
+                DocRun('Выручка выросла на '),
+                DocRun('18', RunStyle(bold: true)),
+                DocRun(' процентов', RunStyle(italic: true)),
+              ],
+            ),
+          ),
+          DocTableBlock(
+            DocTable([
+              DocTableRow([
+                DocTableCell([DocParagraph(runs: const [DocRun('Показатель')])]),
+                DocTableCell([DocParagraph(runs: const [DocRun('Значение')])]),
+              ]),
+              DocTableRow([
+                DocTableCell([DocParagraph(runs: const [DocRun('Выручка')])]),
+                DocTableCell([DocParagraph(runs: const [DocRun('12 400 000')])]),
+              ]),
+            ]),
+          ),
+        ],
+      );
+
+      File(path).writeAsBytesSync(await OdtCodec.save(doc));
+
+      final reopened = await OdtCodec.load(File(path).readAsBytesSync());
+      expect(reopened.plainText, contains('Отчёт за квартал'));
+      expect(reopened.plainText, contains('Выручка выросла'));
+
+      final paragraphs = reopened.blocks.whereType<DocTextBlock>().toList();
+      expect(paragraphs[0].paragraph.style.headingLevel, 1);
+      expect(paragraphs[0].paragraph.style.align, DocAlign.center);
+      expect(paragraphs[0].paragraph.runs.first.style.bold, isTrue);
+
+      final runs = paragraphs[1].paragraph.runs;
+      expect(runs.any((r) => r.style.bold), isTrue);
+      expect(runs.any((r) => r.style.italic), isTrue);
+
+      expect(reopened.tableCount, 1);
+      expect(
+        reopened.blocks.whereType<DocTableBlock>().first.table.rows.length,
+        2,
+      );
+
+      dir.deleteSync(recursive: true);
+    });
+
+    test('odt file is a readable zip with the expected parts', () async {
+      final doc = WordDocument(
+        blocks: [
+          DocTextBlock(DocParagraph(runs: const [DocRun('Проверка')])),
+        ],
+      );
+      final bytes = await OdtCodec.save(doc);
+      final archive = ZipDecoder().decodeBytes(bytes);
+      final names = archive.files.map((f) => f.name).toList();
+      expect(names, contains('mimetype'));
+      expect(names, contains('content.xml'));
+      expect(names, contains('META-INF/manifest.xml'));
+
+      final mimetype = archive.files.firstWhere((f) => f.name == 'mimetype');
+      expect(utf8.decode(mimetype.content), contains('opendocument.text'));
+    });
+
+    test('malformed odt does not throw and yields an empty document', () async {
+      final doc = await OdtCodec.load(utf8.encode('this is not a zip'));
+      expect(doc.blocks, isEmpty);
+    });
+
+    test('media formats are no longer treated as playable kinds', () {
+      expect(kindForName('track.mp3'), FileKind.binary);
+      expect(kindForName('clip.mp4'), FileKind.binary);
+      expect(kindForName('movie.mkv'), FileKind.binary);
+      expect(kindForName('photo.png'), FileKind.image);
+      expect(kindForName('sheet.xlsx'), FileKind.sheet);
+      expect(kindForName('doc.odt'), FileKind.word);
+    });
+
+    test('odt keeps its mime for sharing while mp4 falls back', () {
+      expect(lookupMime('song.mp3'), 'audio/mpeg');
+      expect(lookupMime('clip.mp4'), 'video/mp4');
+    });
+
+    test('sheet viewport stretches columns across the window', () async {
+      final wb = Workbook();
+      final sheet = Sheet('Лист');
+      sheet.cells[0] = {
+        0: const Cell(type: CellType.text, text: 'A'),
+        1: const Cell(type: CellType.text, text: 'B'),
+        2: const Cell(type: CellType.text, text: 'C'),
+      };
+      wb.sheets.add(sheet);
+      final reopened = await XlsxCodec.load(await XlsxCodec.save(wb));
+      expect(reopened.sheets.first.cells[0]?[0]?.text, 'A');
+    });
+
+    test('file icons are recognised for every supported kind', () {
+      for (final name in [
+        'a.docx',
+        'a.odt',
+        'a.xlsx',
+        'a.pptx',
+        'a.pdf',
+        'a.md',
+        'a.csv',
+        'a.zip',
+        'a.png',
+      ]) {
+        expect(kindForName(name), isNot(FileKind.binary), reason: name);
+      }
     });
   });
 }

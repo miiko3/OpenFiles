@@ -12,6 +12,8 @@ class HexViewer extends StatefulWidget {
   State<HexViewer> createState() => _HexViewerState();
 }
 class _HexViewerState extends State<HexViewer> {
+  void _goBack() => Navigator.of(context).pop();
+
   final _saf = SafService.instance;
   final _scroll = ScrollController();
   Uint8List? _bytes;
@@ -55,13 +57,28 @@ class _HexViewerState extends State<HexViewer> {
   @override
   Widget build(BuildContext context) {
     final c = context.c;
-    if (_loading) return const LoadingOverlay(visible: true, message: 'Reading file');
+    if (_loading) {
+      return FileLoadState(
+        onBack: _goBack,
+        child: const LoadingOverlay(
+          visible: true,
+          message: 'Reading file',
+        ),
+      );
+    }
     if (_error != null || _bytes == null) {
-      return EmptyState(
+      return FileLoadState(
+        onBack: _goBack,
+        child: EmptyState(
         icon: Icons.insert_drive_file_outlined,
         title: 'Cannot read ${widget.node.name}',
         message: _error,
-        action: PillButton(label: 'Повторить', primary: true, onPressed: _load),
+          action: PillButton(
+            label: 'Повторить',
+            primary: true,
+            onPressed: _load,
+          ),
+        ),
       );
     }
     final bytes = _bytes!;

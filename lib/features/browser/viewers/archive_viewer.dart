@@ -14,6 +14,8 @@ class ArchiveViewer extends StatefulWidget {
   State<ArchiveViewer> createState() => _ArchiveViewerState();
 }
 class _ArchiveViewerState extends State<ArchiveViewer> {
+  void _goBack() => Navigator.of(context).pop();
+
   final _saf = SafService.instance;
   Archive? _archive;
   bool _loading = true;
@@ -52,11 +54,18 @@ class _ArchiveViewerState extends State<ArchiveViewer> {
       return const LoadingOverlay(visible: true, message: 'Reading archive');
     }
     if (_error != null || _archive == null) {
-      return EmptyState(
+      return FileLoadState(
+        onBack: _goBack,
+        child: EmptyState(
         icon: Icons.folder_zip_outlined,
         title: 'Cannot read ${widget.node.name}',
         message: _error,
-        action: PillButton(label: 'Повторить', primary: true, onPressed: _load),
+          action: PillButton(
+            label: 'Повторить',
+            primary: true,
+            onPressed: _load,
+          ),
+        ),
       );
     }
     final files = _archive!.files

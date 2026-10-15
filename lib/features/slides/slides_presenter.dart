@@ -1,4 +1,4 @@
-import 'dart:math' as math;
+﻿import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/theme/tokens.dart';
@@ -42,7 +42,6 @@ class _SlidesPresenterState extends State<SlidesPresenter> {
   }
   @override
   Widget build(BuildContext context) {
-    final c = context.c;
     return Scaffold(
       backgroundColor: Colors.black,
       body: Focus(
@@ -99,7 +98,15 @@ class _SlidesPresenterState extends State<SlidesPresenter> {
                         ),
                 ),
               ),
-              if (_chrome) _overlay(c),
+              if (_chrome)
+                Positioned(
+                  left: AppSpace.lg,
+                  top: AppSpace.lg,
+                  child: Text(
+                    '$_elapsed',
+                    style: const TextStyle(color: Colors.white54, fontSize: 12),
+                  ),
+                ),
               Positioned(
                 left: 0,
                 bottom: 0,
@@ -227,77 +234,6 @@ class _SlidesPresenterState extends State<SlidesPresenter> {
           child: child,
         );
     }
-  }
-  Widget _overlay(AppColors c) {
-    final next = _index + 1 < widget.deck.slides.length
-        ? widget.deck.slides[_index + 1]
-        : null;
-    return Positioned(
-      left: AppSpace.lg,
-      top: AppSpace.lg,
-      child: IgnorePointer(
-        child: Opacity(
-          opacity: 0.94,
-          child: Container(
-            width: 210,
-            padding: const EdgeInsets.all(AppSpace.md),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.62),
-              borderRadius: AppRadius.lg,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'NEXT',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    fontSize: 10,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                const SizedBox(height: AppSpace.xs),
-                SizedBox(
-                  height: 62,
-                  child: next == null
-                      ? Center(
-                          child: Text(
-                            'End of deck',
-                            style: TextStyle(color: Colors.white54, fontSize: 11),
-                          ),
-                        )
-                      : CustomPaint(
-                          painter: SlidePainter(
-                            slide: next,
-                            deckWidth: widget.deck.widthPt,
-                            deckHeight: widget.deck.heightPt,
-                            images: const {},
-                            scaleOverride: 186 / widget.deck.widthPt,
-                          ),
-                          size: const Size(186, 62),
-                        ),
-                ),
-                if (_slide.notes.isNotEmpty) ...[
-                  const SizedBox(height: AppSpace.sm),
-                  Text(
-                    _slide.notes,
-                    maxLines: 5,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white70, fontSize: 11, height: 1.4),
-                  ),
-                ],
-                const SizedBox(height: AppSpace.sm),
-                Text(
-                  '$_elapsed  ·  ${_index + 1}/${widget.deck.slides.length}',
-                  style: const TextStyle(color: Colors.white54, fontSize: 11),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }
 

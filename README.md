@@ -39,7 +39,7 @@
 
 **Открывает любые файлы** — от Word и Excel до шрифтов и архивов. Неизвестный формат не приводит к ошибке: он открывается в hex-просмотре с поиском по байтам.
 
-**Редактирует документы** — `.docx`, `.xlsx`, `.pptx` читаются и записываются собственными кодеками OOXML. Файл перезаписывается на месте, новый документ не создаётся.
+**Редактирует документы** — `.docx`, `.odt`, `.xlsx`, `.pptx` читаются и записываются собственными кодеками. Файл перезаписывается на месте, новый документ не создаётся.
 
 **Аннотирует PDF** — выделение, подчёркивание, зачёркивание, заметки и рисование поверх страницы.
 
@@ -201,7 +201,7 @@ Requires Android 7.0 (API 24) or newer.
 
 ### What it does
 
-- **Opens any file** — Word, Excel, PDF, images, archives, fonts and e-books. Unknown formats open in a hex viewer with byte search instead of throwing an error.
+- **Opens any file** — Word, OpenDocument, Excel, PDF, images, archives, fonts and e-books. Unknown formats open in a hex viewer with byte search instead of throwing an error.
 - **Edits documents** — `.docx`, `.xlsx` and `.pptx` are read and written by built-in OOXML codecs. The original file is overwritten, no copy is created.
 - **Annotates PDFs** — highlight, underline, strikethrough, notes and freehand drawing.
 - **Shows presentations full screen** — the slide takes the whole display in the editor, and a fullscreen presenter is one tap away.

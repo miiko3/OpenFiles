@@ -324,6 +324,35 @@ Future<bool> confirmDialog(
   );
   return result ?? false;
 }
+class FileLoadState extends StatelessWidget {
+  const FileLoadState({super.key, required this.child, this.onBack});
+  final Widget child;
+  final VoidCallback? onBack;
+  @override
+  Widget build(BuildContext context) {
+    final back = onBack;
+    if (back == null) return child;
+    return Column(
+      children: [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.sm, 0, 0),
+            child: RoundIconButton(
+              icon: Icons.arrow_back_ios_new_rounded,
+              size: 36,
+              iconSize: 16,
+              tooltip: 'Back',
+              onPressed: back,
+            ),
+          ),
+        ),
+        Expanded(child: child),
+      ],
+    );
+  }
+}
+
 class StatusBar extends StatelessWidget {
   const StatusBar({super.key, required this.items});
   final List<Widget> items;

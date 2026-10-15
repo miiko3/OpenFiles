@@ -18,6 +18,8 @@ class SlidesEditor extends StatefulWidget {
   State<SlidesEditor> createState() => _SlidesEditorState();
 }
 class _SlidesEditorState extends State<SlidesEditor> {
+  void _goBack() => Navigator.of(context).pop();
+
   final _saf = SafService.instance;
   final List<SlideDeck> _undo = [];
   final List<SlideDeck> _redo = [];
@@ -184,6 +186,8 @@ class _SlidesEditorState extends State<SlidesEditor> {
     }
     return null;
   }
+  SlideElement? _dragging;
+  Offset _dragLast = Offset.zero;
   SlideElement? _hitTest(Offset local, Size size) {
     final scale = size.width / _deck.widthPt;
     for (var i = _slide.elements.length - 1; i >= 0; i--) {
@@ -454,13 +458,28 @@ class _SlidesEditorState extends State<SlidesEditor> {
   @override
   Widget build(BuildContext context) {
     final c = context.c;
-    if (_loading) return const LoadingOverlay(visible: true, message: 'Opening deck');
+    if (_loading) {
+      return FileLoadState(
+        onBack: _goBack,
+        child: const LoadingOverlay(
+          visible: true,
+          message: 'Opening deck',
+        ),
+      );
+    }
     if (_error != null) {
-      return EmptyState(
+      return FileLoadState(
+        onBack: _goBack,
+        child: EmptyState(
         icon: Icons.error_outline_rounded,
         title: 'Cannot open ${widget.node.name}',
         message: _error,
-        action: PillButton(label: 'Повторить', primary: true, onPressed: _load),
+          action: PillButton(
+            label: 'Повторить',
+            primary: true,
+            onPressed: _load,
+          ),
+        ),
       );
     }
     return Column(
@@ -822,11 +841,43 @@ class _SlidesEditorState extends State<SlidesEditor> {
                       _editText(hit!);
                     }
                   },
-                  onPanUpdate: (details) {
-                    final hit = _hitTest(details.localPosition, _viewport);
-                    if (hit != null && hit.id == _selectedId) return;
-                    setState(() => _selectedId = hit?.id);
+                  onPanStart: (details) {
+                    final hit = _hitTest(
+                      details.localPosition,
+                      _viewport,
+                    );
+                    if (hit == null) {
+                      setState(() => _selectedId = null);
+                      return;
+                    }
+                    _pushUndo();
+                    _dragging = hit;
+                    _dragLast = details.localPosition;
+                    setState(() => _selectedId = hit.id);
                   },
+                  onPanUpdate: (details) {
+                    final dragging = _dragging;
+                    if (dragging == null) {
+                      final hit = _hitTest(details.localPosition, _viewport);
+                      if (hit != null && hit.id == _selectedId) return;
+                      setState(() => _selectedId = hit?.id);
+                      return;
+                    }
+                    final scale = _viewport.width / _deck.widthPt;
+                    if (scale <= 0) return;
+                    final dx = (details.localPosition.dx - _dragLast.dx) / scale;
+                    final dy = (details.localPosition.dy - _dragLast.dy) / scale;
+                    _dragLast = details.localPosition;
+                    setState(() {
+                      dragging.x = (dragging.x + dx)
+                          .clamp(0.0, (_deck.widthPt - dragging.w).clamp(0.0, double.infinity));
+                      dragging.y = (dragging.y + dy)
+                          .clamp(0.0, (_deck.heightPt - dragging.h).clamp(0.0, double.infinity));
+                      _dirty = true;
+                    });
+                  },
+                  onPanEnd: (_) => _dragging = null,
+                  onPanCancel: () => _dragging = null,
                   child: Container(
                     width: width,
                     height: height,

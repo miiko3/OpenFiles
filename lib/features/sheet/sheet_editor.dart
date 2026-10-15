@@ -19,6 +19,8 @@ class SheetEditor extends StatefulWidget {
   State<SheetEditor> createState() => _SheetEditorState();
 }
 class _SheetEditorState extends State<SheetEditor> {
+  void _goBack() => Navigator.of(context).pop();
+
   final _saf = SafService.instance;
   final _hScroll = ScrollController();
   final _vScroll = ScrollController();
@@ -547,13 +549,28 @@ class _SheetEditorState extends State<SheetEditor> {
   @override
   Widget build(BuildContext context) {
     final c = context.c;
-    if (_loading) return const LoadingOverlay(visible: true, message: 'Opening workbook');
+    if (_loading) {
+      return FileLoadState(
+        onBack: _goBack,
+        child: const LoadingOverlay(
+          visible: true,
+          message: 'Opening workbook',
+        ),
+      );
+    }
     if (_error != null) {
-      return EmptyState(
+      return FileLoadState(
+        onBack: _goBack,
+        child: EmptyState(
         icon: Icons.error_outline_rounded,
         title: 'Cannot open ${widget.node.name}',
         message: _error,
-        action: PillButton(label: 'Повторить', primary: true, onPressed: _load),
+          action: PillButton(
+            label: 'Повторить',
+            primary: true,
+            onPressed: _load,
+          ),
+        ),
       );
     }
     return Column(

@@ -53,6 +53,8 @@ List<List<String>> parseCsv(String text, String delimiter) {
   return rows.where((r) => r.isNotEmpty).toList();
 }
 class _CsvEditorState extends State<CsvEditor> {
+  void _goBack() => Navigator.of(context).pop();
+
   final _saf = SafService.instance;
   final _scrollH = ScrollController();
   final _scrollV = ScrollController();
@@ -172,13 +174,28 @@ class _CsvEditorState extends State<CsvEditor> {
   }
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const LoadingOverlay(visible: true, message: 'Parsing');
+    if (_loading) {
+      return FileLoadState(
+        onBack: _goBack,
+        child: const LoadingOverlay(
+          visible: true,
+          message: 'Parsing',
+        ),
+      );
+    }
     if (_error != null) {
-      return EmptyState(
+      return FileLoadState(
+        onBack: _goBack,
+        child: EmptyState(
         icon: Icons.error_outline_rounded,
         title: 'Cannot open ${widget.node.name}',
         message: _error,
-        action: PillButton(label: 'Повторить', primary: true, onPressed: _load),
+          action: PillButton(
+            label: 'Повторить',
+            primary: true,
+            onPressed: _load,
+          ),
+        ),
       );
     }
     final c = context.c;

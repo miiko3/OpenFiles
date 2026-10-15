@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -11,6 +11,7 @@ import '../../data/providers/app_settings.dart';
 import '../../data/services/saf_service.dart';
 import '../../widgets/common.dart';
 import 'docx_codec.dart';
+import 'odt_codec.dart';
 class WordEditor extends StatefulWidget {
   const WordEditor({super.key, required this.node});
   final FsNode node;
@@ -18,6 +19,8 @@ class WordEditor extends StatefulWidget {
   State<WordEditor> createState() => _WordEditorState();
 }
 class _WordEditorState extends State<WordEditor> {
+  void _goBack() => Navigator.of(context).pop();
+
   final _saf = SafService.instance;
   final _pageScroll = ScrollController();
   final Map<int, TextEditingController> _controllers = {};
@@ -31,6 +34,11 @@ class _WordEditorState extends State<WordEditor> {
   int _focused = -1;
   double _zoom = 1.0;
   bool _showMarks = false;
+  bool get _isOdt => widget.node.extension.toLowerCase() == 'odt';
+  Future<WordDocument> _loadDoc(List<int> bytes) =>
+      _isOdt ? OdtCodec.load(bytes) : DocxCodec.load(bytes);
+  Future<List<int>> _saveDoc(WordDocument doc) =>
+      _isOdt ? OdtCodec.save(doc) : DocxCodec.save(doc);
   @override
   void initState() {
     super.initState();
@@ -54,7 +62,7 @@ class _WordEditorState extends State<WordEditor> {
     });
     try {
       final bytes = await _saf.readBytes(widget.node);
-      final doc = await DocxCodec.load(bytes);
+      final doc = await _loadDoc(bytes);
       _doc = doc;
       _zoom = context.read<AppSettings>().defaultZoom;
       _showMarks = context.read<AppSettings>().showFormattingMarks;
@@ -335,7 +343,7 @@ class _WordEditorState extends State<WordEditor> {
   }
   Future<void> _save() async {
     try {
-      final bytes = await DocxCodec.save(_doc);
+      final bytes = await _saveDoc(_doc);
       await _saf.writeBytes(widget.node, bytes);
       if (!mounted) return;
       setState(() => _dirty = false);
@@ -548,20 +556,35 @@ class _WordEditorState extends State<WordEditor> {
   @override
   Widget build(BuildContext context) {
     final c = context.c;
-    if (_loading) return const LoadingOverlay(visible: true, message: 'Opening');
+    if (_loading) {
+      return FileLoadState(
+        onBack: _goBack,
+        child: const LoadingOverlay(
+          visible: true,
+          message: 'Opening',
+        ),
+      );
+    }
     if (_error != null) {
-      return EmptyState(
+      return FileLoadState(
+        onBack: _goBack,
+        child: EmptyState(
         icon: Icons.error_outline_rounded,
         title: 'Cannot open ${widget.node.name}',
         message: _error,
-        action: PillButton(label: 'Повторить', primary: true, onPressed: _load),
+          action: PillButton(
+            label: 'Повторить',
+            primary: true,
+            onPressed: _load,
+          ),
+        ),
       );
     }
     return Column(
       children: [
         _bar(c),
-        Expanded(child: _canvas(c)),
         _toolbar(c),
+        Expanded(child: _canvas(c)),
         StatusBar(
           items: [
             Text('${_doc.wordCount} words'),

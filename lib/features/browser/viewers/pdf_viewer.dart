@@ -26,6 +26,8 @@ class PdfViewer extends StatefulWidget {
   State<PdfViewer> createState() => _PdfViewerState();
 }
 class _PdfViewerState extends State<PdfViewer> {
+  void _goBack() => Navigator.of(context).pop();
+
   final _saf = SafService.instance;
   final List<PdfMark> _marks = [];
   final List<Offset> _current = [];
@@ -140,13 +142,28 @@ class _PdfViewerState extends State<PdfViewer> {
   @override
   Widget build(BuildContext context) {
     final c = context.c;
-    if (_loading) return const LoadingOverlay(visible: true, message: 'Opening PDF');
+    if (_loading) {
+      return FileLoadState(
+        onBack: _goBack,
+        child: const LoadingOverlay(
+          visible: true,
+          message: 'Opening PDF',
+        ),
+      );
+    }
     if (_error != null || _bytes == null) {
-      return EmptyState(
+      return FileLoadState(
+        onBack: _goBack,
+        child: EmptyState(
         icon: Icons.picture_as_pdf_outlined,
         title: 'Cannot open ${widget.node.name}',
         message: _error,
-        action: PillButton(label: 'Повторить', primary: true, onPressed: _load),
+          action: PillButton(
+            label: 'Повторить',
+            primary: true,
+            onPressed: _load,
+          ),
+        ),
       );
     }
     if (!_ready) {
@@ -334,13 +351,6 @@ class _PdfViewerState extends State<PdfViewer> {
               style: context.t.titleMedium,
               overflow: TextOverflow.ellipsis,
             ),
-          ),
-          RoundIconButton(
-            icon: Icons.first_page_rounded,
-            size: 34,
-            iconSize: 18,
-            tooltip: 'На первую',
-            onPressed: () => _controller?.goToPage(pageNumber: 1),
           ),
           RoundIconButton(
             icon: Icons.ios_share_rounded,
